@@ -1,0 +1,2294 @@
+    <!-- Here is the first version of the game. Built with the help of Gemini -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gacha Galaxy</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: "Inter", sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+            display: flex;
+            flex-direction: column; /* Stack header and main content vertically */
+            min-height: 100vh; /* Ensure body takes full viewport height */
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            background-image: linear-gradient(to right top, #a1d9d9, #91d0e1, #80c7e8, #6bbdf0, #54b4f6);
+            overflow-y: hidden; /* Prevent body scroll, individual content areas will manage scrolling */
+            position: relative; /* For absolutely positioned children like overlays */
+        }
+
+        /* Fixed Header Styling - Now sticky to stay in document flow while at top */
+        .app-header {
+            position: sticky; /* Sticky positions it relative to its normal position, then offsets it */
+            top: 0;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            background-image: linear-gradient(to right top, #a1d9d9, #91d0e1, #80c7e8, #6bbdf0, #54b4f6); /* Match body background */
+            padding: 1rem 0; /* Consistent padding top/bottom */
+            height: 4.25rem; /* Explicit height (font-size 2.25rem + 2rem padding) */
+            line-height: 2.25rem; /* Center text vertically */
+            z-index: 50; /* Above regular content, below overlays */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            color: white;
+            font-size: 2.25rem;
+            font-weight: extrabold;
+            box-sizing: border-box; /* Include padding in height calculation */
+        }
+
+        /* Main content area to hold all "pages" below the header */
+        .main-content-wrapper {
+            flex-grow: 1; /* Allows this div to take up all remaining vertical space */
+            width: 100%;
+            position: relative; /* Establishes positioning context for absolute children (.full-page-container) */
+            overflow: hidden; /* Hide overflow from its children */
+            display: flex; /* Use flex to center the .full-page-container children if needed */
+            justify-content: center;
+            align-items: center;
+            padding: 20px; /* Padding for the entire content area */
+            box-sizing: border-box;
+            /* Adjust padding-top to account for the sticky header's height */
+            padding-top: calc(4.25rem + 20px); /* Header height + existing top padding */
+        }
+
+
+        /* Unified style for all full-screen pages (login, register, game, account, leaderboard, prestige-upgrades) */
+        .full-page-container {
+            position: absolute; /* Absolute relative to .main-content-wrapper */
+            inset: 0; /* Top, right, bottom, left 0 means it fills the parent */
+            display: flex; /* Default to flex, will be overridden by JS for hidden state */
+            justify-content: center;
+            align-items: center;
+            padding: 20px; /* Padding for content within each page */
+            box-sizing: border-box;
+            background-image: linear-gradient(to right top, #a1d9d9, #91d0e1, #80c7e8, #6bbdf0, #54b4f6); /* Match body background */
+            overflow-y: auto; /* Allow scrolling within the page if content overflows */
+            /* z-index can be kept default or low as only one is displayed at a time */
+        }
+
+        /* Auth/Account forms and Leaderboard card within their pages */
+        #login-page .auth-form, #register-page .auth-form, #account-page .auth-form, #leaderboard-page .card, #prestige-upgrades-page .card {
+            max-width: 400px; /* Keep forms from being too wide */
+            width: 100%;
+        }
+
+
+        /* Custom animation for gacha pull - NEW */
+        @keyframes fade-in-scale {
+            0% { opacity: 0; transform: scale(0.5); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes slide-in-up {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        .animated-item-icon {
+            animation: fade-in-scale 0.5s ease-out forwards;
+        }
+
+        .animated-item-name, .animated-item-rarity {
+            animation: slide-in-up 0.4s ease-out forwards;
+        }
+
+
+        /* Rarity colors */
+        .rarity-common { color: #6b7280; } /* Gray */
+        .rarity-rare { color: #3b82f6; }    /* Blue */
+        .rarity-epic { color: #9333ea; }    /* Purple */
+        .rarity-legendary { color: #eab308; } /* Gold */
+        .rarity-mythic { color: #dc2626; } /* Red */
+        .rarity-cosmic { color: #8b5cf6; } /* Indigo */
+
+
+        /* General card styling */
+        .card {
+            background-color: #ffffff;
+            border-radius: 1.5rem; /* More rounded */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            transition: all 0.3s ease-in-out; /* Smooth transition for machine styles */
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+        }
+
+        /* Button styling */
+        .gacha-button, .nav-button, .sell-button, .unlock-button, .upgrade-buy-button, .auth-button, .prestige-button, .automation-toggle {
+            padding: 0.75rem 2rem;
+            font-size: 1.25rem;
+            font-weight: bold;
+            border-radius: 9999px; /* Fully rounded */
+            background-image: linear-gradient(to right, #4ade80, #22c55e); /* Green gradient */
+            color: white;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: all 0.2s ease-in-out;
+        }
+
+        .gacha-button:hover:not(:disabled), .nav-button:hover:not(:disabled), .sell-button:hover:not(:disabled), .unlock-button:hover:not(:disabled), .upgrade-buy-button:hover:not(:disabled), .auth-button:hover:not(:disabled), .prestige-button:hover:not(:disabled), .automation-toggle:hover:not(:disabled) {
+            background-image: linear-gradient(to right, #22c55e, #16a34a);
+            transform: translateY(-2px);
+        }
+
+        .gacha-button:active:not(:disabled), .nav-button:active:not(:disabled), .sell-button:active:not(:disabled), .unlock-button:active:not(:disabled), .upgrade-buy-button:active:not(:disabled), .auth-button:active:not(:disabled), .prestige-button:active:not(:disabled), .automation-toggle:active:not(:disabled) {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        .gacha-button:disabled, .nav-button:disabled, .sell-button:disabled, .unlock-button:disabled, .upgrade-buy-button:disabled, .auth-button:disabled, .prestige-button:disabled, .automation-toggle:disabled {
+            background-color: #a7f3d0; /* Lighter green for disabled */
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        /* Specific button colors */
+        .unlock-button {
+            background-image: linear-gradient(to right, #f97316, #ea580c); /* Orange gradient */
+        }
+        .unlock-button:hover:not(:disabled) {
+            background-image: linear-gradient(to right, #ea580c, #c2410c);
+        }
+
+        .nav-button {
+            background-image: linear-gradient(to right, #60a5fa, #3b82f6); /* Blue gradient */
+            padding: 0.5rem 1.5rem; /* Adjusted for smaller buttons */
+            font-size: 1rem; /* Adjusted for smaller buttons */
+            border-radius: 9999px; /* Fully rounded */
+        }
+        .nav-button:hover:not(:disabled) {
+            background-image: linear-gradient(to right, #3b82f6, #2563eb);
+        }
+
+        .sell-button {
+            padding: 0.3rem 0.8rem;
+            font-size: 0.8rem;
+            background-image: linear-gradient(to right, #ef4444, #dc2626); /* Red gradient */
+            border-radius: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        .sell-button:hover:not(:disabled) {
+            background-image: linear-gradient(to right, #dc2626, #b91c1c);
+        }
+
+        .upgrade-buy-button {
+            background-image: linear-gradient(to right, #84cc16, #65a30d); /* Lime Green */
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+        }
+        .upgrade-buy-button:hover:not(:disabled) {
+            background-image: linear-gradient(to right, #65a30d, #4d7c0f);
+        }
+
+        .auth-button.secondary {
+            background-image: linear-gradient(to right, #a0aec0, #718096); /* Gray gradient */
+        }
+        .auth-button.secondary:hover:not(:disabled) {
+            background-image: linear-gradient(to right, #718096, #4a5568);
+        }
+
+        .prestige-button {
+            background-image: linear-gradient(to right, #8b5cf6, #7c3aed); /* Purple gradient */
+            margin-top: 1.5rem;
+        }
+        .prestige-button:hover:not(:disabled) {
+            background-image: linear-gradient(to right, #7c3aed, #6d28d9);
+        }
+
+        .automation-toggle {
+            background-image: linear-gradient(to right, #20c997, #17a2b8); /* Teal/Cyan gradient */
+            width: 100%;
+            font-size: 1rem;
+            padding: 0.5rem 1rem;
+        }
+        .automation-toggle.on {
+            background-image: linear-gradient(to right, #28a745, #218838); /* Green when ON */
+        }
+        .automation-toggle.off {
+            background-image: linear-gradient(to right, #dc3545, #c82333); /* Red when OFF */
+        }
+        .automation-toggle:hover.on:not(:disabled) {
+            background-image: linear-gradient(to right, #218838, #1e7e34);
+        }
+        .automation-toggle:hover.off:not(:disabled) {
+            background-image: linear-gradient(to right, #c82333, #bd2130);
+        }
+
+
+        /* Responsive grid for inventory and upgrades */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .inventory-item, .upgrade-item {
+            background-color: #f8fafc; /* Lightest blue-gray */
+            border-radius: 0.75rem;
+            padding: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            transition: all 0.1s ease-in-out;
+        }
+
+        .inventory-item:hover {
+            transform: scale(1.03);
+            background-color: #eff6ff; /* Slightly darker on hover */
+        }
+
+        .inventory-item-icon {
+            font-size: 2rem; /* Larger icons */
+            margin-bottom: 0.25rem;
+        }
+
+        .upgrade-item {
+            cursor: pointer; /* Indicate it's clickable for purchase */
+        }
+        .upgrade-item:hover:not(.purchased) {
+            transform: scale(1.03);
+            background-color: #f0fdf4; /* Lighter green on hover for purchasable */
+        }
+
+        .upgrade-item.purchased {
+            cursor: default;
+            background-color: #dcfce7; /* Light green for purchased */
+            opacity: 0.8;
+        }
+
+        /* Side Menu Overlay */
+        #side-menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent black overlay */
+            z-index: 9999; /* HIGHEST Z-INDEX to ensure it's always on top */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+            /* Initially hidden */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        #side-menu-overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #side-menu-content {
+            background-color: #f0f4f8; /* Light blue-gray background for content area */
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            max-width: 90%;
+            max-height: 90vh; /* Limit height for responsiveness */
+            overflow-y: auto; /* Enable scrolling for content if it overflows */
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            position: relative; /* For close button positioning */
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem; /* Space between inventory and upgrades */
+
+            /* Responsive width for overlay content */
+            width: 600px; /* Default desktop width */
+        }
+
+        @media (max-width: 768px) {
+            #side-menu-content {
+                width: 95%; /* Wider on smaller screens */
+                padding: 1rem;
+            }
+            .card {
+                padding: 1rem; /* Adjust card padding inside overlay */
+            }
+        }
+
+
+        /* Close button for overlay */
+        #side-menu-close-button {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background-color: #ef4444; /* Red close button */
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 1.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.2s ease;
+        }
+
+        #side-menu-close-button:hover {
+            background-color: #dc2626;
+        }
+
+
+        /* Message Box Styling */
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            z-index: 9998; /* Just below side menu overlay */
+            text-align: center;
+            display: none; /* Hidden by default */
+            max-width: 90%;
+            width: 400px;
+        }
+
+        .message-box h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #1f2937;
+        }
+
+        .message-box p {
+            margin-bottom: 1.5rem;
+            color: #4b5563;
+        }
+
+        .message-box button {
+            background-color: #3b82f6; /* Blue button */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s ease;
+        }
+
+        .message-box button:hover {
+            background-color: #2563eb;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 9997; /* Below message box, above general content */
+            display: none; /* Hidden by default */
+        }
+
+        /* Authentication and Account page specific styles */
+        .auth-form {
+            background-color: #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .auth-form input {
+            width: 100%;
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .auth-form button {
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+
+        .auth-toggle-link {
+            color: #3b82f6;
+            cursor: pointer;
+            text-decoration: underline;
+            margin-top: 1rem;
+            display: block;
+        }
+
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1.5rem;
+        }
+
+        .leaderboard-table th, .leaderboard-table td {
+            border: 1px solid #e5e7eb;
+            padding: 0.75rem;
+            text-align: left;
+        }
+
+        .leaderboard-table th {
+            background-color: #f3f4f6;
+            font-weight: bold;
+            color: #374151;
+        }
+
+        .leaderboard-table tbody tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+
+        /* --- Machine Specific Styles --- */
+        .machine-style-0 { /* StarterMachine */
+            background-image: linear-gradient(to bottom right, #f3f4f6, #e5e7eb);
+            border: 1px solid #d1d5db;
+            color: #4b5563;
+        }
+        .machine-style-0 .text-gray-800 { color: #374151; }
+
+        .machine-style-1 { /* ForestFable */
+            background-image: linear-gradient(to bottom right, #dcfce7, #a7f3d0);
+            border: 2px solid #34d399;
+            box-shadow: 0 4px 10px rgba(52, 211, 153, 0.3);
+            color: #10b981;
+        }
+        .machine-style-1 .text-gray-800 { color: #059669; }
+
+        .machine-style-2 { /* OceanicOasis */
+            background-image: linear-gradient(to bottom right, #e0f2fe, #bfdbfe);
+            border: 2px solid #60a5fa;
+            box-shadow: 0 4px 12px rgba(96, 165, 250, 0.4);
+            color: #3b82f6;
+        }
+        .machine-style-2 .text-gray-800 { color: #2563eb; }
+
+        .machine-style-3 { /* DesertDunes */
+            background-image: linear-gradient(to bottom right, #fef3c7, #fde68a);
+            border: 2px solid #fbbf24;
+            box-shadow: 0 6px 15px rgba(251, 191, 36, 0.4);
+            color: #d97706;
+        }
+        .machine-style-3 .text-gray-800 { color: #b45309; }
+
+        .machine-style-4 { /* SkySanctuary */
+            background-image: linear-gradient(to bottom right, #eff6ff, #dbeafe);
+            border: 3px solid #93c5fd;
+            box-shadow: 0 6px 18px rgba(147, 197, 253, 0.5);
+            color: #60a5fa;
+        }
+        .machine-style-4 .text-gray-800 { color: #3b82f6; }
+
+        .machine-style-5 { /* VolcanicForge */
+            background-image: linear-gradient(to bottom right, #fecaca, #ef4444);
+            border: 3px solid #b91c1c;
+            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.6);
+            color: #7f1d1d;
+        }
+        .machine-style-5 .text-gray-800 { color: #450a0a; }
+
+        .machine-style-6 { /* CrystalCaverns */
+            background-image: linear-gradient(to bottom right, #f3e8ff, #d8b4fe);
+            border: 4px solid #a78bfa;
+            box-shadow: 0 8px 25px rgba(167, 139, 250, 0.7);
+            color: #8b5cf6;
+        }
+        .machine-style-6 .text-gray-800 { color: #6d28d9; }
+
+        .machine-style-7 { /* ShadowyRealm */
+            background-image: linear-gradient(to bottom right, #1f2937, #374151);
+            border: 4px solid #4b5563;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+            color: #d1d5db;
+        }
+        .machine-style-7 .text-gray-800 { color: #f9fafb; }
+        .machine-style-7 .text-gray-700 { color: #e5e7eb; }
+
+        .machine-style-8 { /* CelestialSpire */
+            background-image: linear-gradient(to bottom right, #0c0a09, #290a5e); /* Dark cosmic blend */
+            border: 5px solid #6366f1;
+            box-shadow: 0 12px 35px rgba(99, 102, 241, 0.9);
+            color: #e0e7ff; /* Light text for dark background */
+        }
+        .machine-style-8 .text-gray-800 { color: #f8fafc; }
+        .machine-style-8 .text-gray-700 { color: #e0e7ff; }
+        .machine-style-8 #item-pulled-name, .machine-style-8 #item-pulled-icon { color: #d1d5db; } /* Ensure pulled item visibility */
+
+
+        .machine-style-9 { /* CosmicNexus - Flashiest */
+            background-image: linear-gradient(45deg, #f97316, #ef4444, #dc2626, #c026d3, #9333ea, #6366f1, #3b82f6, #0ea5e9, #14b8a6, #22c55e);
+            border: 6px solid #8b5cf6;
+            box-shadow: 0 15px 40px rgba(139, 92, 246, 1);
+            color: #f0fdf4; /* Very light text */
+            animation: pulse-border 2s infinite alternate; /* Subtle pulse animation */
+        }
+        .machine-style-9 .text-gray-800 { color: #f0fdf4; }
+        .machine-style-9 .text-gray-700 { color: #ecfdf5; }
+        .machine-style-9 #item-pulled-name, .machine-style-9 #item-pulled-icon { color: #e0e7ff; }
+
+        @keyframes pulse-border {
+            0% { border-color: #8b5cf6; box-shadow: 0 15px 40px rgba(139, 92, 246, 0.7); }
+            100% { border-color: #fef08a; box-shadow: 0 15px 50px rgba(253, 224, 71, 0.9); }
+        }
+
+        /* Override general card hover for machine styles to maintain consistency */
+        .machine-style-0:hover, .machine-style-1:hover, .machine-style-2:hover, .machine-style-3:hover,
+        .machine-style-4:hover, .machine-style-5:hover, .machine-style-6:hover, .machine-style-7:hover,
+        .machine-style-8:hover, .machine-style-9:hover {
+            transform: translateY(-3px); /* Keep the subtle lift on hover */
+        }
+
+        /* Last Pulled Container becomes the view window */
+        #last-pulled-container {
+            position: relative;
+            height: 180px; /* Increased height for the view window */
+            width: 100%; /* Take full width */
+            overflow: hidden;
+            border: 2px solid #cbd5e1; /* Subtle border for the window */
+            border-radius: 0.75rem;
+            background-color: #f8fafc;
+            display: flex; /* Use flexbox to center content initially */
+            flex-direction: column; /* Stack icon, name, rarity vertically */
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Hide the elements for item display initially */
+        #item-pulled-icon, #item-pulled-name, #item-pulled-rarity {
+             opacity: 0; /* Hidden by default, animated to visible */
+             display: none; /* Ensure it's not taking up space */
+        }
+
+        /* New styling for the fixed menu button */
+        #floating-menu-button {
+            position: fixed;
+            bottom: 20px; /* 20px from the bottom */
+            left: 50%; /* Center horizontally */
+            transform: translateX(-50%); /* Adjust for its own width to truly center */
+            z-index: 100; /* Ensure it's above other page content but below side menu overlay */
+            padding: 1rem 2rem; /* Larger padding for a better touch target */
+            font-size: 1.5rem; /* Larger font size */
+            background-image: linear-gradient(to right, #60a5fa, #3b82f6); /* Blue gradient */
+            color: white;
+            border-radius: 9999px; /* Pill shape */
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3); /* Stronger shadow */
+            transition: all 0.3s ease-in-out;
+            min-width: 150px; /* Ensure a decent width */
+            text-align: center;
+            display: flex; /* Use flex to center text and icon */
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem; /* Space between icon and text */
+        }
+
+        #floating-menu-button:hover {
+            transform: translateX(-50%) translateY(-3px); /* Lift slightly on hover */
+            background-image: linear-gradient(to right, #3b82f6, #2563eb);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+        }
+        #floating-menu-button:active {
+            transform: translateX(-50%) translateY(0);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header is now sticky at the top -->
+    <h1 class="app-header">
+        🌌 Gacha Machine Tycoon 🌟
+    </h1>
+
+    <!-- Main content area below the header -->
+    <div class="main-content-wrapper">
+        <!-- Login Page -->
+        <div id="login-page" class="full-page-container">
+            <div class="auth-form">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Login</h2>
+                <input type="email" id="login-email" placeholder="Email" class="block w-full p-3 rounded-md border border-gray-300 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="password" id="login-password" placeholder="Password" class="block w-full p-3 rounded-md border border-gray-300 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button id="login-button" class="auth-button">Log In</button>
+                <a href="#" id="show-register" class="auth-toggle-link">Don't have an account? Register here.</a>
+            </div>
+        </div>
+
+        <!-- Register Page -->
+        <div id="register-page" class="full-page-container">
+            <div class="auth-form">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Register</h2>
+                <input type="text" id="register-username" placeholder="Username" class="block w-full p-3 rounded-md border border-gray-300 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="email" id="register-email" placeholder="Email" class="block w-full p-3 rounded-md border border-gray-300 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="password" id="register-password" placeholder="Password" class="block w-full p-3 rounded-md border border-gray-300 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button id="register-button" class="auth-button">Register</button>
+                <a href="#" id="show-login" class="auth-toggle-link">Already have an account? Login here.</a>
+            </div>
+        </div>
+
+        <!-- Game Page -->
+        <div id="game-page" class="full-page-container flex-col">
+            <!-- Content of game page - now centered within its full-page-container -->
+            <div class="flex flex-col md:flex-row gap-8 w-full justify-center items-stretch max-w-4xl">
+                <!-- Gacha Machine Card -->
+                <div id="gacha-machine-card" class="card flex-1 flex flex-col justify-between p-6 md:p-8 w-full max-w-md">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-6" id="current-machine-name">Gacha Machine</h2>
+
+                    <!-- Currency Display -->
+                    <div class="text-xl font-semibold text-gray-700 mb-6 flex items-center justify-center">
+                        💰 Credits: <span id="credits-display" class="ml-2 text-green-600">0</span>
+                    </div>
+
+                    <!-- Last Pulled Item Display - Updated structure -->
+                    <div id="last-pulled-container" class="mb-8">
+                        <!-- Spin track removed, items directly rendered here with animations -->
+                        <div id="item-pulled-icon" class="text-7xl mb-2 text-gray-400">?</div>
+                        <div id="item-pulled-name" class="text-2xl font-semibold text-gray-600"></div>
+                        <div id="item-pulled-rarity" class="text-lg font-medium"></div>
+                    </div>
+
+                    <!-- Machine Navigation -->
+                    <div class="flex justify-between items-center mb-4">
+                        <button id="prev-machine-button" class="nav-button">&lt; Prev</button>
+                        <span id="machine-progress" class="text-gray-600 font-semibold text-sm">1/X</span>
+                        <button id="next-machine-button" class="nav-button">Next &gt;</button>
+                    </div>
+
+                    <!-- Pull Button or Unlock Button -->
+                    <button id="main-action-button" class="gacha-button w-full">
+                        Pull (0 Credits)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Page -->
+        <div id="account-page" class="full-page-container">
+            <div class="auth-form">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">My Account</h2>
+                <div class="text-left mb-6">
+                    <p class="text-lg text-gray-700 mb-2">Username: <span id="account-username" class="font-semibold text-gray-900"></span></p>
+                    <p class="text-lg text-gray-700">Email: <span id="account-email" class="font-semibold text-gray-900"></span></p>
+                </div>
+                <button id="logout-button" class="auth-button secondary w-full">Log Out</button>
+            </div>
+        </div>
+
+        <!-- Leaderboard Page -->
+        <div id="leaderboard-page" class="full-page-container">
+            <div class="card p-6 md:p-8 max-w-xl w-full">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Leaderboard</h2>
+                <p class="text-gray-600 mb-4">Top players by lifetime credits earned:</p>
+                <div id="leaderboard-list">
+                    <table class="leaderboard-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Username</th>
+                                <th>Lifetime Credits</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-table-body">
+                            <!-- Leaderboard entries will be inserted here -->
+                        </tbody>
+                    </table>
+                    <p id="empty-leaderboard-message" class="text-center text-gray-500 italic mt-4 hidden">No leaderboard data yet!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prestige Upgrades Page -->
+        <div id="prestige-upgrades-page" class="full-page-container flex-col">
+            <div class="card p-6 md:p-8 max-w-xl w-full">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Prestige Upgrades</h2>
+                <div class="text-xl font-semibold text-gray-700 mb-6 flex items-center justify-center">
+                    ✨ Stardust: <span id="stardust-display" class="ml-2 text-purple-600">0</span>
+                </div>
+                <div id="prestige-upgrades-list" class="grid-container">
+                    <p id="no-prestige-upgrades-message" class="col-span-full text-center text-gray-500 italic">No prestige upgrades available yet!</p>
+                </div>
+            </div>
+        </div>
+    </div> <!-- End of .main-content-wrapper -->
+
+    <!-- Menu button moved outside page containers to be always visible -->
+    <button id="floating-menu-button">
+        ☰ Menu
+    </button>
+
+    <!-- Side Menu Overlay (Hidden by default) -->
+    <div id="side-menu-overlay">
+        <div id="side-menu-content">
+            <button id="side-menu-close-button">X</button>
+
+            <!-- Navigation Buttons in Menu -->
+            <div class="flex flex-col gap-4 mb-8">
+                <button id="menu-game-button" class="nav-button w-full">Game</button>
+                <button id="menu-account-button" class="nav-button w-full">Account</button>
+                <button id="menu-leaderboard-button" class="nav-button w-full">Leaderboard</button>
+                <button id="menu-prestige-upgrades-button" class="nav-button w-full">Prestige Upgrades</button>
+                <!-- Prestige Button - Moved here -->
+                <button id="prestige-button" class="prestige-button w-full mt-4">
+                    Prestige (Earn 0 Stardust)
+                </button>
+            </div>
+
+            <!-- Inventory Card (Moved inside overlay) -->
+            <div class="card p-6 md:p-8">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Your Inventory</h2>
+                <div id="inventory-list" class="grid-container">
+                    <p id="empty-inventory-message" class="col-span-full text-center text-gray-500 italic">Your inventory is empty!</p>
+                </div>
+            </div>
+
+            <!-- Upgrades Card (Moved inside overlay) -->
+            <div class="card p-6 md:p-8">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Upgrades</h2>
+                <div id="upgrades-list" class="grid-container">
+                    <p id="no-upgrades-message" class="col-span-full text-center text-gray-500 italic">No upgrades available yet!</p>
+                </div>
+                <div class="text-center text-gray-700 font-semibold mt-4">
+                    Total Idle Income: <span id="total-idle-income" class="text-blue-600">0</span> Credits/sec
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Box for alerts/confirmations -->
+    <div id="message-box" class="message-box">
+        <h3 id="message-title"></h3>
+        <p id="message-text"></p>
+        <button id="message-button">OK</button>
+    </div>
+    <div id="overlay" class="overlay"></div>
+
+    <!-- Confirmation Modal for Prestige -->
+    <div id="confirmation-box" class="message-box">
+        <h3 id="confirmation-title"></h3>
+        <p id="confirmation-text"></p>
+        <div class="flex justify-around mt-6">
+            <button id="confirm-yes" class="auth-button">Yes</button>
+            <button id="confirm-no" class="auth-button secondary">No</button>
+        </div>
+    </div>
+    <div id="confirmation-overlay" class="overlay"></div>
+
+    <script type="module">
+        // Firebase configuration
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyCOOiLRa-lo5EDZeBTYr_xuvtsWhyfq9Ec",
+            authDomain: "gacha-tycoon.firebaseapp.com",
+            projectId: "gacha-tycoon",
+            storageBucket: "gacha-tycoon.firebasestorage.app",
+            messagingSenderId: "75475595070",
+            appId: "1:75475595070:web:4c80c644fa57393007c66f",
+            measurementId: "G-5FWLZLLWML"
+        };
+
+        // This is the app ID used in Firestore paths.
+        // It should match your Firebase Project ID for consistent data storage.
+        const APP_ID = FIREBASE_CONFIG.projectId || 'default-app-id';
+
+        // Firebase imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import {
+            getAuth,
+            signInWithEmailAndPassword,
+            createUserWithEmailAndPassword,
+            signOut,
+            onAuthStateChanged,
+            updateProfile
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import {
+            getFirestore,
+            doc,
+            setDoc,
+            getDoc,
+            onSnapshot,
+            collection,
+            query,
+            orderBy,
+            getDocs
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase App and Services
+        let app;
+        let db;
+        let auth;
+        let userId = null;
+        let currentUserData = null;
+        let isAuthReady = false; // Flag to indicate if authentication is ready
+
+        // UI Element References
+        const creditsDisplay = document.getElementById('credits-display');
+        const mainActionButton = document.getElementById('main-action-button');
+        const lastPulledContainer = document.getElementById('last-pulled-container');
+        const itemPulledIcon = document.getElementById('item-pulled-icon');
+        const itemPulledName = document.getElementById('item-pulled-name');
+        const itemPulledRarity = document.getElementById('item-pulled-rarity');
+        const inventoryList = document.getElementById('inventory-list');
+        const emptyInventoryMessage = document.getElementById('empty-inventory-message');
+        const currentMachineName = document.getElementById('current-machine-name');
+        const prevMachineButton = document.getElementById('prev-machine-button');
+        const nextMachineButton = document.getElementById('next-machine-button');
+        const machineProgress = document.getElementById('machine-progress');
+        const upgradesList = document.getElementById('upgrades-list');
+        const noUpgradesMessage = document.getElementById('no-upgrades-message');
+        const totalIdleIncomeDisplay = document.getElementById('total-idle-income');
+        const gachaMachineCard = document.getElementById('gacha-machine-card');
+        const prestigeButton = document.getElementById('prestige-button');
+
+        // Authentication UI Elements
+        const loginPage = document.getElementById('login-page');
+        const registerPage = document.getElementById('register-page');
+        const loginEmailInput = document.getElementById('login-email');
+        const loginPasswordInput = document.getElementById('login-password');
+        const loginButton = document.getElementById('login-button');
+        const showRegisterLink = document.getElementById('show-register');
+        const registerUsernameInput = document.getElementById('register-username');
+        const registerEmailInput = document.getElementById('register-email');
+        const registerPasswordInput = document.getElementById('register-password');
+        const registerButton = document.getElementById('register-button');
+        const showLoginLink = document.getElementById('show-login');
+
+        // Game Pages
+        const gamePage = document.getElementById('game-page');
+        const accountPage = document.getElementById('account-page');
+        const leaderboardPage = document.getElementById('leaderboard-page');
+        const prestigeUpgradesPage = document.getElementById('prestige-upgrades-page');
+
+        // Account Page Elements
+        const accountUsernameDisplay = document.getElementById('account-username');
+        const accountEmailDisplay = document.getElementById('account-email');
+        const logoutButton = document.getElementById('logout-button');
+
+        // Leaderboard Page Elements
+        const leaderboardTableBody = document.getElementById('leaderboard-table-body');
+        const emptyLeaderboardMessage = document.getElementById('empty-leaderboard-message');
+
+        // Prestige Upgrades Page Elements
+        const stardustDisplay = document.getElementById('stardust-display');
+        const prestigeUpgradesList = document.getElementById('prestige-upgrades-list');
+        const noPrestigeUpgradesMessage = document.getElementById('no-prestige-upgrades-message');
+
+        // Floating Menu Elements
+        const floatingMenuButton = document.getElementById('floating-menu-button');
+        const sideMenuOverlay = document.getElementById('side-menu-overlay');
+        const sideMenuCloseButton = document.getElementById('side-menu-close-button');
+        const menuGameButton = document.getElementById('menu-game-button');
+        const menuAccountButton = document.getElementById('menu-account-button');
+        const menuLeaderboardButton = document.getElementById('menu-leaderboard-button');
+        const menuPrestigeUpgradesButton = document.getElementById('menu-prestige-upgrades-button');
+
+        // Message box elements
+        const messageBox = document.getElementById('message-box');
+        const messageTitle = document.getElementById('message-title');
+        const messageText = document.getElementById('message-text');
+        const messageButton = document.getElementById('message-button');
+        const overlay = document.getElementById('overlay');
+
+        // Confirmation box elements
+        const confirmationBox = document.getElementById('confirmation-box');
+        const confirmationTitle = document.getElementById('confirmation-title');
+        const confirmationText = document.getElementById('confirmation-text');
+        const confirmYesButton = document.getElementById('confirm-yes');
+        const confirmNoButton = document.getElementById('confirm-no');
+        const confirmationOverlay = document.getElementById('confirmation-overlay');
+
+        /**
+         * Displays a custom message box instead of alert().
+         * @param {string} title - The title of the message.
+         * @param {string} message - The message content.
+         */
+        function showMessageBox(title, message) {
+            messageTitle.textContent = title;
+            messageText.textContent = message;
+            messageBox.style.display = 'block';
+            overlay.style.display = 'block';
+            messageButton.onclick = () => {
+                messageBox.style.display = 'none';
+                overlay.style.display = 'none';
+            };
+        }
+
+        /**
+         * Displays a custom confirmation box.
+         * @param {string} title - The title of the confirmation.
+         * @param {string} message - The message content.
+         * @returns {Promise<boolean>} Resolves true if confirmed, false if cancelled.
+         */
+        function showConfirmationBox(title, message) {
+            return new Promise(resolve => {
+                confirmationTitle.textContent = title;
+                confirmationText.textContent = message;
+                confirmationBox.style.display = 'block';
+                confirmationOverlay.style.display = 'block';
+
+                const handleConfirm = () => {
+                    confirmationBox.style.display = 'none';
+                    confirmationOverlay.style.display = 'none';
+                    confirmYesButton.removeEventListener('click', handleConfirm);
+                    confirmNoButton.removeEventListener('click', handleCancel);
+                    resolve(true);
+                };
+
+                const handleCancel = () => {
+                    confirmationBox.style.display = 'none';
+                    confirmationOverlay.style.display = 'none';
+                    confirmYesButton.removeEventListener('click', handleConfirm);
+                    confirmNoButton.removeEventListener('click', handleCancel);
+                    resolve(false);
+                };
+
+                confirmYesButton.addEventListener('click', handleConfirm);
+                confirmNoButton.addEventListener('click', handleCancel);
+            });
+        }
+
+
+        // Game State (now stored in currentUserData)
+        let credits = 0;
+        let inventory = [];
+        let currentMachineIndex = 0;
+        let machinesUnlockedStatus = {};
+        let upgradesPurchased = {};
+        let stardust = 0; // New currency
+        let prestigeUpgradesPurchased = {}; // New prestige upgrades
+        let automationSettings = { autoPull: false, autoSell: false }; // New automation settings
+        let lastSaveTime = Date.now();
+        let lifetimeCreditsEarned = 0;
+        let username = 'Anonymous';
+
+        let idleIncomeInterval;
+        let autoPullInterval = null; // New interval for auto pull
+        let autoSellInterval = null; // New interval for auto sell
+        let isPulling = false; // Flag to prevent multiple simultaneous pulls
+
+
+        // Dynamic multipliers affected by upgrades
+        let PULL_COST_MULTIPLIER = 1.0;
+        let SELL_VALUE_MULTIPLIER = 1.0;
+        let GLOBAL_ITEM_VALUE_MULTIPLIER = 1.0; // New multiplier from prestige
+
+        // Define gacha items, rarities, and machines (same as before)
+        const gachaItems = {
+            'StarterMachine': [
+                { name: 'Common Pebble', rarity: 'Common', emoji: '🪨', colorClass: 'rarity-common', value: 10 },
+                { name: 'Common Leaf', rarity: 'Common', emoji: '🍃', colorClass: 'rarity-common', value: 10 },
+                { name: 'Common Stick', rarity: 'Common', emoji: '🥢', colorClass: 'rarity-common', value: 10 },
+                { name: 'Rare Berry', rarity: 'Rare', emoji: '🫐', colorClass: 'rarity-rare', value: 50 },
+                { name: 'Rare Acorn', rarity: 'Rare', emoji: '🌰', colorClass: 'rarity-rare', value: 50 },
+            ],
+            'ForestFable': [
+                { name: 'Common Flower', rarity: 'Common', emoji: '🌸', colorClass: 'rarity-common', value: 30 },
+                { name: 'Rare Mushroom', rarity: 'Rare', emoji: '🍄', colorClass: 'rarity-rare', value: 150 },
+                { name: 'Epic Fairy Dust', rarity: 'Epic', emoji: '✨', colorClass: 'rarity-epic', value: 750 },
+            ],
+            'OceanicOasis': [
+                { name: 'Common Seashell', rarity: 'Common', emoji: '🐚', colorClass: 'rarity-common', value: 100 },
+                { name: 'Rare Pearl', rarity: 'Rare', emoji: '⚪', colorClass: 'rarity-rare', value: 500 },
+                { name: 'Epic Coral Fragment', rarity: 'Epic', emoji: '🐠', colorClass: 'rarity-epic', value: 2500 },
+                { name: 'Legendary Trident', rarity: 'Legendary', emoji: '🔱', colorClass: 'rarity-legendary', value: 10000 },
+            ],
+            'DesertDunes': [
+                { name: 'Common Sand', rarity: 'Common', emoji: '🏜️', colorClass: 'rarity-common', value: 250 },
+                { name: 'Rare Scorpion', rarity: 'Rare', emoji: '🦂', colorClass: 'rarity-rare', value: 1250 },
+                { name: 'Epic Oasis Map', rarity: 'Epic', emoji: '🗺️', colorClass: 'rarity-epic', value: 6000 },
+                { name: 'Legendary Scarab', rarity: 'Legendary', emoji: '🐞', colorClass: 'rarity-legendary', value: 25000 },
+            ],
+            'SkySanctuary': [
+                { name: 'Common Feather', rarity: 'Common', emoji: '🪶', colorClass: 'rarity-common', value: 500 },
+                { name: 'Rare Cloud Puff', rarity: 'Rare', emoji: '☁️', colorClass: 'rarity-rare', value: 2500 },
+                { name: 'Epic Thunderbird Egg', rarity: 'Epic', emoji: '🥚', colorClass: 'rarity-epic', value: 12000 },
+                { name: 'Legendary Sky Whale', rarity: 'Legendary', emoji: '🐋', colorClass: 'rarity-legendary', value: 50000 },
+                { name: 'Mythic Zephyr Core', rarity: 'Mythic', emoji: '💨', colorClass: 'rarity-mythic', value: 200000 },
+            ],
+            'VolcanicForge': [
+                { name: 'Common Ash', rarity: 'Common', emoji: '🌋', colorClass: 'rarity-common', value: 1000 },
+                { name: 'Rare Obsidian', rarity: 'Rare', emoji: '🔪', colorClass: 'rarity-rare', value: 5000 },
+                { name: 'Epic Lava Crystal', rarity: 'Epic', emoji: '🔥', colorClass: 'rarity-epic', value: 25000 },
+                { name: 'Legendary Phoenix Feather', rarity: 'Legendary', emoji: '🪶', colorClass: 'rarity-legendary', value: 100000 },
+                { name: 'Mythic Dragon Heart', rarity: 'Mythic', emoji: '❤️‍🔥', colorClass: 'rarity-mythic', value: 400000 },
+            ],
+            'CrystalCaverns': [
+                { name: 'Common Geode', rarity: 'Common', emoji: '🪨', colorClass: 'rarity-common', value: 2000 },
+                { name: 'Rare Quartz', rarity: 'Rare', emoji: '💎', colorClass: 'rarity-rare', value: 10000 },
+                { name: 'Epic Amethyst Shard', rarity: 'Epic', emoji: '💜', colorClass: 'rarity-epic', value: 50000 },
+                { name: 'Legendary Light Gem', rarity: 'Legendary', emoji: '✨', colorClass: 'rarity-legendary', value: 200000 },
+                { name: 'Mythic Prismatic Core', rarity: 'Mythic', emoji: '🌈', colorClass: 'rarity-mythic', value: 800000 },
+            ],
+            'ShadowyRealm': [
+                { name: 'Common Gloom', rarity: 'Common', emoji: '🌑', colorClass: 'rarity-common', value: 4000 },
+                { name: 'Rare Shadow Orb', rarity: 'Rare', emoji: '⚫', colorClass: 'rarity-rare', value: 20000 },
+                { name: 'Epic Soul Shard', rarity: 'Epic', emoji: '👻', colorClass: 'rarity-epic', value: 100000 },
+                { name: 'Legendary Nightmare Blade', rarity: 'Legendary', emoji: '🔪', colorClass: 'rarity-legendary', value: 400000 },
+                { name: 'Mythic Void Essence', rarity: 'Mythic', emoji: '🌌', colorClass: 'rarity-mythic', value: 1600000 },
+            ],
+            'CelestialSpire': [
+                { name: 'Common Stardust', rarity: 'Common', emoji: '🌟', colorClass: 'rarity-common', value: 8000 },
+                { name: 'Rare Comet Fragment', rarity: 'Rare', emoji: '☄️', colorClass: 'rarity-rare', value: 40000 },
+                { name: 'Epic Nebula Cloud', rarity: 'Epic', emoji: '💫', colorClass: 'rarity-epic', value: 200000 },
+                { name: 'Legendary Star Map', rarity: 'Legendary', emoji: '🔭', colorClass: 'rarity-legendary', value: 800000 },
+                { name: 'Mythic Galaxy Core', rarity: 'Mythic', emoji: '🌠', colorClass: 'rarity-mythic', value: 3000000 },
+                { name: 'Cosmic Universe Seed', rarity: 'Cosmic', emoji: '🥚', colorClass: 'rarity-cosmic', value: 10000000 },
+            ],
+            'CosmicNexus': [
+                { name: 'Legendary Ancient Relic', rarity: 'Legendary', emoji: '🗝️', colorClass: 'rarity-legendary', value: 15000 },
+                { name: 'Mythic Star Fragment', rarity: 'Mythic', emoji: '✨', colorClass: 'rarity-mythic', value: 50000 },
+                { name: 'Cosmic Singularity', rarity: 'Cosmic', emoji: '🌀', colorClass: 'rarity-cosmic', value: 200000 },
+                { name: 'Cosmic God Shard', rarity: 'Cosmic', emoji: '💎', colorClass: 'rarity-cosmic', value: 500000 },
+            ]
+        };
+
+        const rarityProbabilities = {
+            'StarterMachine': { 'Common': 0.70, 'Rare': 0.30 },
+            'ForestFable': { 'Common': 0.60, 'Rare': 0.30, 'Epic': 0.10 },
+            'OceanicOasis': { 'Common': 0.55, 'Rare': 0.30, 'Epic': 0.10, 'Legendary': 0.05 },
+            'DesertDunes': { 'Common': 0.50, 'Rare': 0.30, 'Epic': 0.15, 'Legendary': 0.05 },
+            'SkySanctuary': { 'Common': 0.45, 'Rare': 0.30, 'Epic': 0.20, 'Legendary': 0.04, 'Mythic': 0.01 },
+            'VolcanicForge': { 'Common': 0.40, 'Rare': 0.30, 'Epic': 0.25, 'Legendary': 0.04, 'Mythic': 0.01 },
+            'CrystalCaverns': { 'Common': 0.35, 'Rare': 0.30, 'Epic': 0.30, 'Legendary': 0.04, 'Mythic': 0.01 },
+            'ShadowyRealm': { 'Common': 0.30, 'Rare': 0.30, 'Epic': 0.35, 'Legendary': 0.04, 'Mythic': 0.01 },
+            'CelestialSpire': { 'Common': 0.25, 'Rare': 0.30, 'Epic': 0.40, 'Legendary': 0.04, 'Mythic': 0.008, 'Cosmic': 0.002 },
+            'CosmicNexus': { 'Legendary': 0.70, 'Mythic': 0.25, 'Cosmic': 0.05 }
+        };
+
+        const gachaMachines = [
+            { id: 'StarterMachine', name: 'Starter Machine', pullCost: 10, unlockCost: 0 },
+            { id: 'ForestFable', name: 'Forest Fable', pullCost: 50, unlockCost: 250 },
+            { id: 'OceanicOasis', name: 'Oceanic Oasis', pullCost: 100, unlockCost: 750 },
+            { id: 'DesertDunes', name: 'Desert Dunes', pullCost: 250, unlockCost: 2000 },
+            { id: 'SkySanctuary', name: 'Sky Sanctuary', pullCost: 500, unlockCost: 5000 },
+            { id: 'VolcanicForge', name: 'Volcanic Forge', pullCost: 1000, unlockCost: 12000 },
+            { id: 'CrystalCaverns', name: 'Crystal Caverns', pullCost: 2500, unlockCost: 25000 },
+            { id: 'ShadowyRealm', name: 'Shadowy Realm', pullCost: 5000, unlockCost: 50000 },
+            { id: 'CelestialSpire', name: 'Celestial Spire', pullCost: 10000, unlockCost: 100000 },
+            { id: 'CosmicNexus', name: 'Cosmic Nexus', pullCost: 25000, unlockCost: 250000 }
+        ];
+
+        const upgrades = [
+            // Credit Generators
+            { id: 'creditGen1', name: 'Small Credit Generator', description: 'Generates 1 credit/sec', emoji: '⚙️', cost: 50, type: 'income', incomePerSecond: 1 },
+            { id: 'creditGen2', name: 'Medium Credit Generator', description: 'Generates 5 credits/sec', emoji: '🏭', cost: 200, type: 'income', incomePerSecond: 5 },
+            { id: 'creditGen3', name: 'Large Credit Generator', description: 'Generates 20 credits/sec', emoji: '🚀', cost: 800, type: 'income', incomePerSecond: 20 },
+            { id: 'creditGen4', name: 'Mega Credit Generator', description: 'Generates 100 credits/sec', emoji: '🌌', cost: 4000, type: 'income', incomePerSecond: 100 },
+            { id: 'creditGen5', name: 'Galactic Credit Hub', description: 'Generates 500 credits/sec', emoji: '🌠', cost: 20000, type: 'income', incomePerSecond: 500 },
+
+            // Pull Cost Reducers
+            { id: 'pullCostRed1', name: 'Minor Discount', description: 'Reduces pull costs by 5%', emoji: '🏷️', cost: 100, type: 'pullCostReduction', multiplier: 0.95 },
+            { id: 'pullCostRed2', name: 'Moderate Discount', description: 'Reduces pull costs by 15%', emoji: '📉', cost: 500, type: 'pullCostReduction', multiplier: 0.85 },
+            { id: 'pullCostRed3', name: 'Major Discount', description: 'Reduces pull costs by 25%', emoji: '💸', cost: 2500, type: 'pullCostReduction', multiplier: 0.75 },
+
+            // Sell Value Multipliers
+            { id: 'sellValueMult1', name: 'Slightly Better Buyer', description: 'Increases sell value by 10%', emoji: '📈', cost: 150, type: 'sellValueMultiplier', multiplier: 1.10 },
+            { id: 'sellValueMult2', name: 'Expert Appraiser', description: 'Increases sell value by 25%', emoji: '💰', cost: 750, type: 'sellValueMultiplier', multiplier: 1.25 },
+        ];
+
+        // New Prestige Upgrades
+        const prestigeUpgrades = [
+            { id: 'autoPull', name: 'Auto-Puller', description: 'Automates gacha pulls every 5 seconds.', emoji: '🤖', cost: 10, type: 'automation', automationType: 'autoPull', interval: 5000 },
+            { id: 'autoSell', name: 'Auto-Seller', description: 'Automates selling of newly acquired items.', emoji: '♻️', cost: 15, type: 'automation', automationType: 'autoSell', interval: 1000 },
+            { id: 'stardustEff1', name: 'Stardust Efficiency I', description: 'All item values +10%', emoji: '✨⬆️', cost: 5, type: 'globalValueMultiplier', multiplier: 1.10 },
+            { id: 'stardustEff2', name: 'Stardust Efficiency II', description: 'All item values +25%', emoji: '🌟⬆️', cost: 20, type: 'globalValueMultiplier', multiplier: 1.25 },
+            { id: 'stardustEff3', name: 'Stardust Efficiency III', description: 'All item values +50%', emoji: '💫⬆️', cost: 50, type: 'globalValueMultiplier', multiplier: 1.50 },
+            { id: 'superIdleGen', name: 'Super Idle Generator', description: 'Doubles idle credit generation.', emoji: '⚡', cost: 30, type: 'idleIncomeMultiplier', multiplier: 2.0 },
+        ];
+
+
+        /**
+         * Switches the currently visible page by directly manipulating display style.
+         * Sets display 'none' for all pages, then 'flex' for the target page.
+         * @param {HTMLElement} pageToShow - The DOM element of the page to display.
+         */
+        function showPage(pageToShow) {
+            console.log(`showPage called: ${pageToShow.id}`);
+            const allPages = [loginPage, registerPage, gamePage, accountPage, leaderboardPage, prestigeUpgradesPage];
+            allPages.forEach(page => {
+                if (page === pageToShow) {
+                    page.style.display = 'flex'; // Show this page as flex
+                    console.log(`Displaying page: ${page.id}`);
+                } else {
+                    page.style.display = 'none'; // Hide other pages
+                    console.log(`Hiding page: ${page.id}`);
+                }
+            });
+
+            closeSideMenu(); // Always close side menu when switching main pages
+
+            // Explicitly update UI if the game page is being shown
+            if (pageToShow === gamePage) {
+                updateUI(); // Ensures the correct machine is displayed
+            }
+        }
+
+        /**
+         * Handles user registration.
+         */
+        async function handleRegister() {
+            const email = registerEmailInput.value;
+            const password = registerPasswordInput.value;
+            const chosenUsername = registerUsernameInput.value;
+
+            if (!email || !password || !chosenUsername) {
+                showMessageBox("Input Error", "Please fill in all fields (username, email, and password).");
+                return;
+            }
+
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                // Set user's display name (username) in Firebase Auth profile
+                await updateProfile(user, { displayName: chosenUsername });
+                showMessageBox("Registration Successful", `Welcome, ${chosenUsername}! You are now logged in.`);
+                // onAuthStateChanged will handle data loading and navigation
+            } catch (error) {
+                console.error("Registration Error:", error);
+                showMessageBox("Registration Failed", `Error: ${error.message}`);
+            }
+        }
+
+        /**
+         * Handles user login.
+         */
+        async function handleLogin() {
+            const email = loginEmailInput.value;
+            const password = loginPasswordInput.value;
+
+            if (!email || !password) {
+                showMessageBox("Input Error", "Please enter your email and password.");
+                return;
+            }
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                showMessageBox("Login Successful", "You are now logged in!");
+                // onAuthStateChanged will handle data loading and navigation
+            } catch (error) {
+                console.error("Login Error:", error);
+                showMessageBox("Login Failed", `Error: ${error.message}`);
+            }
+        }
+
+        /**
+         * Handles user logout.
+         */
+        async function handleLogout() {
+            try {
+                await signOut(auth);
+                showMessageBox("Logged Out", "You have been successfully logged out.");
+                // onAuthStateChanged will handle redirecting to loginPage
+            } catch (error) {
+                console.error("Logout Error:", error);
+                showMessageBox("Logout Failed", `Error: ${error.message}`);
+            }
+        }
+
+        /**
+         * Initializes Firebase and sets up authentication listener.
+         */
+        async function initializeFirebase() {
+            try {
+                if (!FIREBASE_CONFIG.apiKey || !FIREBASE_CONFIG.projectId) {
+                    showMessageBox("Firebase Setup Required",
+                        "To save your game progress and enable accounts, please provide your Firebase configuration in the script. " +
+                        "Look for `const FIREBASE_CONFIG = { ... };` near the top of the script."
+                    );
+                    console.error("Firebase config is missing or incomplete. Cannot initialize Firebase.");
+                    return;
+                }
+
+                app = initializeApp(FIREBASE_CONFIG);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                console.log("Using Firebase Config:", FIREBASE_CONFIG);
+
+                // Set initial page to login if no user is currently authenticated
+                // This ensures the login page is shown immediately on load if no user is signed in.
+                showPage(loginPage);
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        username = user.displayName || 'Player'; // Use display name or default
+                        console.log("Firebase Auth Ready. User ID:", userId, "Username:", username);
+                        isAuthReady = true;
+
+                        // This function now handles showing the game page upon success, or staying on login upon error
+                        await setupFirestoreListeners();
+                        startAutomationIntervals(); // Start automation based on loaded settings
+                        startIdleIncome(); // Start idle income after data is confirmed loaded/initialized
+                        updateAccountPage(); // Update account info
+                        fetchLeaderboardData(); // Fetch leaderboard data once authenticated
+                    } else {
+                        userId = null;
+                        username = 'Anonymous';
+                        isAuthReady = false;
+                        stopAutomationIntervals(); // Stop automation if logged out
+                        if (idleIncomeInterval) { // Stop idle income if logged out
+                            clearInterval(idleIncomeInterval);
+                        }
+                        console.log("User logged out or not authenticated. Showing login page.");
+                        showPage(loginPage); // Show login page if not authenticated
+                        resetGameUI(); // Clear game UI when logged out
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error initializing Firebase:", error);
+                showMessageBox("Error", "Failed to initialize game services. Please check your Firebase configuration and console for errors.");
+            }
+        }
+
+        /**
+         * Resets UI elements for when a user logs out.
+         */
+        function resetGameUI() {
+            credits = 0;
+            inventory = [];
+            currentMachineIndex = 0;
+            machinesUnlockedStatus = {};
+            upgradesPurchased = {};
+            stardust = 0;
+            prestigeUpgradesPurchased = {};
+            automationSettings = { autoPull: false, autoSell: false };
+            lastSaveTime = Date.now();
+            lifetimeCreditsEarned = 0;
+
+            PULL_COST_MULTIPLIER = 1.0;
+            SELL_VALUE_MULTIPLIER = 1.0;
+            GLOBAL_ITEM_VALUE_MULTIPLIER = 1.0;
+
+            updateUI(); // Update UI with reset values
+            // Reset the item display
+            itemPulledIcon.textContent = '?';
+            itemPulledName.textContent = '';
+            itemPulledRarity.textContent = '';
+            itemPulledIcon.style.opacity = '0';
+            itemPulledName.style.opacity = '0';
+            itemPulledRarity.style.opacity = '0';
+            itemPulledIcon.style.display = 'none'; // Ensure elements are hidden
+            itemPulledName.style.display = 'none';
+            itemPulledRarity.style.display = 'none';
+            itemPulledIcon.classList.remove('animated-item-icon');
+            itemPulledName.classList.remove('animated-item-name');
+            itemPulledRarity.classList.remove('animated-item-rarity');
+        }
+
+        /**
+         * Sets up real-time listeners for user data from Firestore.
+         * Handles initial data load/initialization and page navigation based on success/failure.
+         */
+        async function setupFirestoreListeners() {
+            // Ensure auth.currentUser is available before proceeding
+            if (!db || !auth.currentUser) {
+                console.log("Firestore not ready or user not authenticated. Cannot set up listeners.");
+                showPage(loginPage); // Ensure login page is shown
+                return;
+            }
+
+            userId = auth.currentUser.uid; // Ensure userId is correctly set
+            username = auth.currentUser.displayName || 'Player'; // Ensure username is correctly set
+
+            const userDocRef = doc(db, `artifacts/${APP_ID}/users/${userId}/gachaGame/data`);
+            console.log(`Setting up Firestore listener for user: ${userId}`);
+
+            try {
+                const docSnap = await getDoc(userDocRef);
+                if (docSnap.exists()) {
+                    console.log("User document exists. Loading data.");
+                    currentUserData = docSnap.data();
+                    console.log("User data loaded from Firestore:", currentUserData);
+                    // Load game state from Firestore
+                    credits = Number(currentUserData.credits) || 0;
+                    currentMachineIndex = typeof currentUserData.currentMachineIndex !== 'undefined' ? currentUserData.currentMachineIndex : 0;
+                    machinesUnlockedStatus = currentUserData.machinesUnlockedStatus || {};
+                    upgradesPurchased = currentUserData.upgradesPurchased || {};
+                    stardust = Number(currentUserData.stardust) || 0; // Load stardust
+                    prestigeUpgradesPurchased = currentUserData.prestigeUpgradesPurchased || {}; // Load prestige upgrades
+                    automationSettings = currentUserData.automationSettings || { autoPull: false, autoSell: false }; // Load automation settings
+                    lastSaveTime = currentUserData.lastSaveTime || Date.now();
+                    lifetimeCreditsEarned = Number(currentUserData.lifetimeCreditsEarned) || 0;
+
+                    try {
+                        inventory = currentUserData.inventory ? JSON.parse(currentUserData.inventory) : [];
+                    } catch (e) {
+                        inventory = currentUserData.inventory || [];
+                        console.warn("Inventory data was not a valid JSON string, using directly.");
+                    }
+
+                    const currentTime = Date.now();
+                    const timeElapsedSeconds = Math.floor((currentTime - lastSaveTime) / 1000);
+                    if (timeElapsedSeconds > 0) {
+                        const totalIncomePerSecond = calculateTotalIdleIncome();
+                        const offlineCreditsEarned = totalIncomePerSecond * timeElapsedSeconds;
+                        if (offlineCreditsEarned > 0) {
+                            credits += offlineCreditsEarned;
+                            lifetimeCreditsEarned += offlineCreditsEarned;
+                            showMessageBox("Welcome Back!", `You earned ${offlineCreditsEarned.toFixed(0)} credits while you were away!`);
+                        }
+                    }
+                    applyUpgradeEffects();
+                    updateUI();
+                    showPage(gamePage); // Show game page upon successful data load
+                    console.log("Game page displayed after successful data load.");
+
+                } else {
+                    console.log("User document does NOT exist. Initializing with default values for new user.");
+                    await initializeUserData(); // Initialize data for new user
+                    showPage(gamePage); // Show game page after new user initialization
+                    console.log("Game page displayed after new user data initialized.");
+                }
+
+                // Setup snapshot listener AFTER initial data is loaded/initialized and page is shown
+                // This listener will keep the UI updated in real-time
+                onSnapshot(userDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        console.log("Firestore snapshot received, updating game state.");
+                        currentUserData = docSnap.data();
+                        credits = Number(currentUserData.credits) || 0;
+                        currentMachineIndex = typeof currentUserData.currentMachineIndex !== 'undefined' ? currentUserData.currentMachineIndex : currentMachineIndex;
+                        machinesUnlockedStatus = currentUserData.machinesUnlockedStatus || machinesUnlockedStatus;
+                        upgradesPurchased = currentUserData.upgradesPurchased || upgradesPurchased;
+                        stardust = Number(currentUserData.stardust) || stardust; // Update stardust from snapshot
+                        prestigeUpgradesPurchased = currentUserData.prestigeUpgradesPurchased || prestigeUpgradesPurchased; // Update prestige upgrades from snapshot
+                        automationSettings = currentUserData.automationSettings || automationSettings; // Update automation settings from snapshot
+                        lastSaveTime = currentUserData.lastSaveTime || Date.now();
+                        lifetimeCreditsEarned = Number(currentUserData.lifetimeCreditsEarned) || 0;
+
+                        try {
+                            inventory = currentUserData.inventory ? JSON.parse(currentUserData.inventory) : inventory;
+                        } catch (e) {
+                            inventory = currentUserData.inventory || inventory;
+                            console.warn("Inventory data was not a valid JSON string from snapshot, using directly.");
+                        }
+                        applyUpgradeEffects();
+                        updateUI();
+                        startAutomationIntervals(); // Re-evaluate and restart automation if settings changed
+                    } else {
+                        console.log("User document disappeared from snapshot, forcing re-initialization (might indicate data deletion).");
+                        // This might happen if user data is deleted from Firestore console.
+                        // In this case, we re-initialize and stay on game page.
+                        initializeUserData();
+                    }
+                }, (error) => {
+                    console.error("Error listening to user data:", error);
+                    showMessageBox("Real-time Update Error", "Failed to get real-time game updates. Please refresh if issues persist.");
+                    // Do NOT navigate away here, just inform the user that real-time updates might be broken.
+                });
+                console.log("Firestore listener setup completed.");
+
+            } catch (error) {
+                console.error("Error during initial data fetch or setup:", error);
+                showMessageBox("Data Load Error", "Failed to load game data. This might be due to a network issue or missing user data. Please try again or register a new account if you are a new user.");
+                showPage(loginPage); // Critical: If data load fails, return to login page
+            }
+        }
+
+
+        /**
+         * Initializes user data in Firestore if it doesn't exist for a newly signed-up/in user.
+         */
+        async function initializeUserData() {
+            if (!db || !userId) {
+                console.error("Cannot initialize user data: DB or UserID is missing.");
+                return;
+            }
+            const userDocRef = doc(db, `artifacts/${APP_ID}/users/${userId}/gachaGame/data`);
+            const initialCredits = 100;
+
+            try {
+                const initialMachinesUnlocked = {};
+                gachaMachines.forEach((machine, index) => {
+                    initialMachinesUnlocked[machine.id] = (index === 0);
+                });
+
+                await setDoc(userDocRef, {
+                    credits: initialCredits,
+                    inventory: JSON.stringify([]),
+                    currentMachineIndex: 0,
+                    machinesUnlockedStatus: initialMachinesUnlocked,
+                    upgradesPurchased: {},
+                    stardust: 0, // Initialize stardust for new users
+                    prestigeUpgradesPurchased: {}, // Initialize prestige upgrades for new users
+                    automationSettings: { autoPull: false, autoSell: false }, // Initialize automation settings
+                    lastSaveTime: Date.now(),
+                    lifetimeCreditsEarned: initialCredits,
+                    username: auth.currentUser?.displayName || 'Player'
+                });
+                credits = initialCredits;
+                lifetimeCreditsEarned = initialCredits;
+                stardust = 0;
+                prestigeUpgradesPurchased = {};
+                automationSettings = { autoPull: false, autoSell: false };
+                username = auth.currentUser?.displayName || 'Player';
+                console.log("Initialized new user data with 100 credits.");
+
+                await updateLeaderboardEntry(userId, username, lifetimeCreditsEarned);
+                fetchLeaderboardData(); // Refresh leaderboard with new user
+            } catch (error) {
+                console.error("Error initializing user data:", error);
+                // Propagate error up to setupFirestoreListeners to handle page display
+                throw new Error("Failed to initialize new user data: " + error.message);
+            }
+        }
+
+        /**
+         * Updates the public leaderboard entry for the current user.
+         * This should be called whenever lifetimeCreditsEarned changes.
+         * @param {string} uid - The user's Firebase UID.
+         * @param {string} uname - The user's display name/username.
+         * @param {number} lce - The user's lifetime credits earned.
+         */
+        async function updateLeaderboardEntry(uid, uname, lce) {
+            if (!db || !uid) return;
+            const leaderboardDocRef = doc(db, `artifacts/${APP_ID}/public/data/leaderboard/${uid}`);
+            try {
+                await setDoc(leaderboardDocRef, {
+                    username: uname,
+                    lifetimeCredits: lce
+                }, { merge: true });
+                console.log(`Leaderboard entry updated for ${uname}.`);
+            } catch (error) {
+                console.error("Error updating leaderboard entry:", error);
+            }
+        }
+
+        /**
+         * Fetches and displays leaderboard data.
+         */
+        async function fetchLeaderboardData() {
+            if (!db) return;
+            const leaderboardColRef = collection(db, `artifacts/${APP_ID}/public/data/leaderboard`);
+            const q = query(leaderboardColRef, orderBy("lifetimeCredits", "desc"));
+            console.log("Fetching leaderboard data...");
+
+            try {
+                const querySnapshot = await getDocs(q);
+                leaderboardTableBody.innerHTML = '';
+                if (querySnapshot.empty) {
+                    emptyLeaderboardMessage.classList.remove('hidden');
+                    console.log("Leaderboard is empty.");
+                } else {
+                    emptyLeaderboardMessage.classList.add('hidden');
+                    let rank = 1;
+                    querySnapshot.forEach(doc => {
+                        const data = doc.data();
+                        const row = leaderboardTableBody.insertRow();
+                        row.innerHTML = `
+                            <td>${rank}.</td>
+                            <td>${data.username || 'Anonymous'}</td>
+                            <td>${data.lifetimeCredits.toFixed(0)}</td>
+                        `;
+                        rank++;
+                    });
+                    console.log("Leaderboard data fetched and displayed.");
+                }
+            } catch (error) {
+                console.error("Error fetching leaderboard data:", error);
+                showMessageBox("Leaderboard Error", "Could not load leaderboard data.");
+            }
+        }
+
+
+        /**
+         * Applies the effects of all purchased upgrades and prestige upgrades to global multipliers.
+         */
+        function applyUpgradeEffects() {
+            PULL_COST_MULTIPLIER = 1.0;
+            SELL_VALUE_MULTIPLIER = 1.0;
+            GLOBAL_ITEM_VALUE_MULTIPLIER = 1.0;
+
+            // Apply regular upgrades
+            upgrades.forEach(upgrade => {
+                if (upgradesPurchased[upgrade.id]) {
+                    if (upgrade.type === 'pullCostReduction') {
+                        PULL_COST_MULTIPLIER *= upgrade.multiplier;
+                    } else if (upgrade.type === 'sellValueMultiplier') {
+                        SELL_VALUE_MULTIPLIER *= upgrade.multiplier;
+                    }
+                }
+            });
+
+            // Apply prestige upgrades
+            prestigeUpgrades.forEach(upgrade => {
+                if (prestigeUpgradesPurchased[upgrade.id]) {
+                    if (upgrade.type === 'globalValueMultiplier') {
+                        GLOBAL_ITEM_VALUE_MULTIPLIER *= upgrade.multiplier;
+                    }
+                    // Idle income multiplier is handled in calculateTotalIdleIncome
+                }
+            });
+
+            PULL_COST_MULTIPLIER = Math.max(0.1, PULL_COST_MULTIPLIER); // Cap min pull cost reduction
+            SELL_VALUE_MULTIPLIER = Math.max(1.0, SELL_VALUE_MULTIPLIER); // Cap min sell value
+        }
+
+        /**
+         * Updates all relevant UI elements.
+         */
+        function updateUI() {
+            updateCreditsDisplay();
+            updateInventoryDisplay();
+            updateMachineDisplay();
+            updateUpgradesDisplay();
+            updateIdleIncomeDisplay();
+            updateAccountPage();
+            updatePrestigeUI(); // Call new prestige UI update
+        }
+
+        /**
+         * Updates the credits display in the UI.
+         */
+        function updateCreditsDisplay() {
+            creditsDisplay.textContent = credits.toFixed(0);
+        }
+
+        /**
+         * Updates the inventory display in the UI.
+         */
+        function updateInventoryDisplay() {
+            inventoryList.innerHTML = '';
+            if (inventory.length === 0) {
+                emptyInventoryMessage.style.display = 'block';
+            } else {
+                emptyInventoryMessage.style.display = 'none';
+                inventory.forEach((item, index) => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = `inventory-item ${item.colorClass} flex flex-col items-center justify-center text-center`;
+                    // Apply global item value multiplier from prestige
+                    const displayValue = (item.value * SELL_VALUE_MULTIPLIER * GLOBAL_ITEM_VALUE_MULTIPLIER).toFixed(0);
+                    itemDiv.innerHTML = `
+                        <div class="inventory-item-icon">${item.emoji}</div>
+                        <div class="font-semibold">${item.name}</div>
+                        <div class="text-xs italic">${item.rarity}</div>
+                        <div class="text-xs text-gray-500">Value: ${displayValue}</div>
+                        <button class="sell-button" data-index="${index}">Sell</button>
+                    `;
+                    inventoryList.appendChild(itemDiv);
+                });
+                inventoryList.querySelectorAll('.sell-button').forEach(button => {
+                    button.addEventListener('click', (event) => {
+                        const itemIndex = parseInt(event.target.dataset.index);
+                        sellItem(itemIndex);
+                    });
+                });
+            }
+        }
+
+        /**
+         * Updates the current machine's display and button states.
+         */
+        function updateMachineDisplay() {
+            for (let i = 0; i < gachaMachines.length; i++) {
+                gachaMachineCard.classList.remove(`machine-style-${i}`);
+            }
+
+            const currentMachine = gachaMachines[currentMachineIndex];
+            currentMachineName.textContent = currentMachine.name;
+            machineProgress.textContent = `${currentMachineIndex + 1}/${gachaMachines.length}`;
+
+            gachaMachineCard.classList.add(`machine-style-${currentMachineIndex}`);
+
+            const isCurrentMachineUnlocked = machinesUnlockedStatus[currentMachine.id];
+            const currentPullCost = Math.ceil(currentMachine.pullCost * PULL_COST_MULTIPLIER);
+
+            if (isCurrentMachineUnlocked) {
+                mainActionButton.textContent = `Pull (${currentPullCost} Credits)`;
+                mainActionButton.classList.remove('unlock-button');
+                mainActionButton.classList.add('gacha-button');
+                mainActionButton.onclick = handlePull;
+                mainActionButton.disabled = credits < currentPullCost || isPulling; // Disable if pulling
+            } else {
+                mainActionButton.textContent = `Unlock (${currentMachine.unlockCost} Credits)`;
+                mainActionButton.classList.remove('gacha-button');
+                mainActionButton.classList.add('unlock-button');
+                mainActionButton.onclick = unlockMachine;
+                mainActionButton.disabled = credits < currentMachine.unlockCost;
+            }
+
+            prevMachineButton.disabled = currentMachineIndex === 0;
+            nextMachineButton.disabled = currentMachineIndex === gachaMachines.length - 1;
+
+            // Prestige button is now in the menu, its text is updated by updatePrestigeUI()
+        }
+
+        /**
+         * Updates the upgrades display in the UI.
+         */
+        function updateUpgradesDisplay() {
+            upgradesList.innerHTML = '';
+            if (upgrades.length === 0) {
+                noUpgradesMessage.style.display = 'block';
+            } else {
+                noUpgradesMessage.style.display = 'none';
+                upgrades.forEach(upgrade => {
+                    const isPurchased = upgradesPurchased[upgrade.id];
+                    const upgradeDiv = document.createElement('div');
+                    upgradeDiv.className = `upgrade-item ${isPurchased ? 'purchased' : ''} flex flex-col items-center justify-center text-center`;
+                    upgradeDiv.innerHTML = `
+                        <div class="inventory-item-icon">${upgrade.emoji}</div>
+                        <div class="font-semibold">${upgrade.name}</div>
+                        <div class="text-xs text-gray-500">${upgrade.description}</div>
+                        ${isPurchased
+                            ? '<div class="text-sm font-bold text-green-700 mt-2">PURCHASED</div>'
+                            : `<button class="upgrade-buy-button mt-2" data-upgrade-id="${upgrade.id}">Buy (${upgrade.cost} Cr)</button>`
+                        }
+                    `;
+                    upgradesList.appendChild(upgradeDiv);
+                });
+                upgradesList.querySelectorAll('.upgrade-buy-button').forEach(button => {
+                    button.addEventListener('click', (event) => {
+                        const upgradeId = event.target.dataset.upgradeId;
+                        purchaseUpgrade(upgradeId);
+                    });
+                    const upgrade = upgrades.find(u => u.id === button.dataset.upgradeId);
+                    if (upgrade && credits < upgrade.cost) {
+                        button.disabled = true;
+                    }
+                });
+            }
+        }
+
+        /**
+         * Updates the prestige upgrades display in the UI.
+         */
+        function updatePrestigeUI() {
+            stardustDisplay.textContent = stardust.toFixed(0);
+            prestigeUpgradesList.innerHTML = '';
+
+            if (prestigeUpgrades.length === 0) {
+                noPrestigeUpgradesMessage.style.display = 'block';
+            } else {
+                noPrestigeUpgradesMessage.style.display = 'none';
+                prestigeUpgrades.forEach(upgrade => {
+                    const isPurchased = prestigeUpgradesPurchased[upgrade.id];
+                    const upgradeDiv = document.createElement('div');
+                    upgradeDiv.className = `upgrade-item ${isPurchased ? 'purchased' : ''} flex flex-col items-center justify-center text-center`;
+
+                    if (upgrade.type === 'automation') {
+                        // For automation upgrades, add a toggle button
+                        const isToggledOn = automationSettings[upgrade.automationType];
+                        upgradeDiv.innerHTML = `
+                            <div class="inventory-item-icon">${upgrade.emoji}</div>
+                            <div class="font-semibold">${upgrade.name}</div>
+                            <div class="text-xs text-gray-500">${upgrade.description}</div>
+                            ${isPurchased
+                                ? `<button class="automation-toggle mt-2 ${isToggledOn ? 'on' : 'off'}" data-automation-type="${upgrade.automationType}">
+                                    ${isToggledOn ? 'ON' : 'OFF'}
+                                </button>`
+                                : `<button class="upgrade-buy-button mt-2" data-upgrade-id="${upgrade.id}">Buy (${upgrade.cost} Stardust)</button>`
+                            }
+                        `;
+                    } else {
+                        // For other prestige upgrades (multipliers)
+                        upgradeDiv.innerHTML = `
+                            <div class="inventory-item-icon">${upgrade.emoji}</div>
+                            <div class="font-semibold">${upgrade.name}</div>
+                            <div class="text-xs text-gray-500">${upgrade.description}</div>
+                            ${isPurchased
+                                ? '<div class="text-sm font-bold text-green-700 mt-2">PURCHASED</div>'
+                                : `<button class="upgrade-buy-button mt-2" data-upgrade-id="${upgrade.id}">Buy (${upgrade.cost} Stardust)</button>`
+                            }
+                        `;
+                    }
+                    prestigeUpgradesList.appendChild(upgradeDiv);
+                });
+
+                // Add event listeners for purchase buttons
+                prestigeUpgradesList.querySelectorAll('.upgrade-buy-button').forEach(button => {
+                    button.addEventListener('click', (event) => {
+                        const upgradeId = event.target.dataset.upgradeId;
+                        purchasePrestigeUpgrade(upgradeId);
+                    });
+                    const upgrade = prestigeUpgrades.find(u => u.id === button.dataset.upgradeId);
+                    if (upgrade && stardust < upgrade.cost) {
+                        button.disabled = true;
+                    }
+                });
+
+                // Add event listeners for automation toggles
+                prestigeUpgradesList.querySelectorAll('.automation-toggle').forEach(button => {
+                    button.addEventListener('click', (event) => {
+                        const automationType = event.target.dataset.automationType;
+                        toggleAutomation(automationType);
+                    });
+                });
+            }
+            // Update prestige button text (now in menu)
+            const stardustToEarn = calculateStardustEarned();
+            prestigeButton.textContent = `Prestige (Earn ${stardustToEarn} Stardust)`;
+        }
+
+
+        /**
+         * Updates the account page display.
+         */
+        function updateAccountPage() {
+            if (auth.currentUser) {
+                accountEmailDisplay.textContent = auth.currentUser.email;
+                accountUsernameDisplay.textContent = auth.currentUser.displayName || 'No Username Set';
+            } else {
+                accountEmailDisplay.textContent = 'N/A';
+                accountUsernameDisplay.textContent = 'Not Logged In';
+            }
+        }
+
+        /**
+         * Calculates the total idle income per second, affected by prestige upgrades.
+         * @returns {number} The total credits generated per second.
+         */
+        function calculateTotalIdleIncome() {
+            let totalIncome = 0;
+            upgrades.forEach(upgrade => {
+                if (upgrade.type === 'income' && upgradesPurchased[upgrade.id]) {
+                    totalIncome += upgrade.incomePerSecond;
+                }
+            });
+
+            // Apply idle income multiplier from prestige upgrades
+            prestigeUpgrades.forEach(upgrade => {
+                if (upgrade.type === 'idleIncomeMultiplier' && prestigeUpgradesPurchased[upgrade.id]) {
+                    totalIncome *= upgrade.multiplier;
+                }
+            });
+
+            return totalIncome;
+        }
+
+        /**
+         * Displays the total idle income.
+         */
+        function updateIdleIncomeDisplay() {
+            totalIdleIncomeDisplay.textContent = calculateTotalIdleIncome().toFixed(0);
+        }
+
+        /**
+         * Starts the idle credit generation interval.
+         */
+        function startIdleIncome() {
+            if (idleIncomeInterval) {
+                clearInterval(idleIncomeInterval);
+            }
+            idleIncomeInterval = setInterval(() => {
+                const incomeThisTick = calculateTotalIdleIncome();
+                if (incomeThisTick > 0) {
+                    credits += incomeThisTick;
+                    lifetimeCreditsEarned += incomeThisTick;
+                    updateCreditsDisplay();
+                    saveGameData();
+                }
+            }, 1000);
+        }
+
+        /**
+         * Calculates the amount of Stardust earned on prestige based on current credits.
+         * For example, 1 Stardust for every 100,000 current credits.
+         * @returns {number} The amount of Stardust to be earned.
+         */
+        function calculateStardustEarned() {
+            // Adjust this formula as needed for game balance
+            const PRESTIGE_CREDIT_REQUIREMENT = 100000;
+            return Math.floor(credits / PRESTIGE_CREDIT_REQUIREMENT);
+        }
+
+        /**
+         * Handles the prestige logic.
+         */
+        async function handlePrestige() {
+            if (!userId) {
+                showMessageBox("Login Required", "Please log in to prestige.");
+                return;
+            }
+
+            const PRESTIGE_CREDIT_REQUIREMENT = 100000;
+            const stardustToEarn = calculateStardustEarned();
+
+            if (credits < PRESTIGE_CREDIT_REQUIREMENT) {
+                showMessageBox("Not Enough Credits", `You need at least ${PRESTIGE_CREDIT_REQUIREMENT.toLocaleString()} current credits to earn Stardust and prestige. You currently have ${credits.toFixed(0)}.`);
+                return;
+            }
+
+            const confirmed = await showConfirmationBox(
+                "Prestige Confirmation",
+                `Are you sure you want to Prestige? You will reset your credits, inventory, machines, and upgrades, but earn ${stardustToEarn} Stardust!`
+            );
+
+            if (!confirmed) {
+                return;
+            }
+
+            // Perform prestige reset
+            credits = 0;
+            inventory = [];
+            currentMachineIndex = 0;
+            machinesUnlockedStatus = {}; // Reset unlocked machines
+            gachaMachines.forEach((machine, index) => {
+                machinesUnlockedStatus[machine.id] = (index === 0); // Only starter machine unlocked
+            });
+            upgradesPurchased = {}; // Reset regular upgrades
+            stardust += stardustToEarn;
+            // Lifetime credits are NOT reset here, as they accumulate across prestiges for leaderboard
+            // Only current credits are reset to calculate stardust based on current run progress.
+            // lifetimeCreditsEarned remains for the leaderboard, but the current run's earnings restart for prestige calc.
+            // Correction: Previous logic for lifetimeCreditsEarned for leaderboard was already correct.
+            // The user wants prestige based on *current* credits, so lifetimeCreditsEarned is NOT reset here.
+            // The *calculation* for stardust now uses `credits`, which are reset.
+
+            stopAutomationIntervals(); // Stop automation before resetting and saving
+            startAutomationIntervals(); // Restart based on existing automation settings
+
+            applyUpgradeEffects(); // Re-apply multipliers as regular upgrades are reset
+            updateUI(); // Update all UI elements
+
+            await saveGameData(); // Save reset state and new stardust
+            showMessageBox("Prestige Complete!", `You have successfully prestiged and earned ${stardustToEarn} Stardust!`);
+        }
+
+        /**
+         * Saves game data (credits, inventory, machine state, upgrades, lifetimeCreditsEarned, stardust, prestigeUpgrades, automationSettings) to Firestore.
+         */
+        async function saveGameData() {
+            if (!db || !userId) return;
+            const userDocRef = doc(db, `artifacts/${APP_ID}/users/${userId}/gachaGame/data`);
+            try {
+                await setDoc(userDocRef, {
+                    credits: credits,
+                    inventory: JSON.stringify(inventory),
+                    currentMachineIndex: currentMachineIndex,
+                    machinesUnlockedStatus: machinesUnlockedStatus,
+                    upgradesPurchased: upgradesPurchased,
+                    stardust: stardust,
+                    prestigeUpgradesPurchased: prestigeUpgradesPurchased,
+                    automationSettings: automationSettings,
+                    lastSaveTime: Date.now(),
+                    lifetimeCreditsEarned: lifetimeCreditsEarned,
+                    username: auth.currentUser?.displayName || 'Player'
+                });
+                console.log("Game data saved.");
+                await updateLeaderboardEntry(userId, auth.currentUser?.displayName || 'Player', lifetimeCreditsEarned);
+            }
+            catch (error) {
+                console.error("Error saving game data:", error);
+                showMessageBox("Save Error", "Failed to save game progress. Please check your connection or Firestore rules.");
+            }
+        }
+
+        /**
+         * Selects a random item based on rarity probabilities for the current machine.
+         * @returns {Object} The selected gacha item.
+         */
+        function selectRandomItem() {
+            const currentMachine = gachaMachines[currentMachineIndex];
+            const itemsInMachine = gachaItems[currentMachine.id];
+            const probabilities = rarityProbabilities[currentMachine.id];
+
+            const rand = Math.random();
+            let cumulativeProbability = 0;
+            const availableItems = itemsInMachine;
+
+            for (const rarity of Object.keys(probabilities)) {
+                cumulativeProbability += probabilities[rarity];
+                if (rand <= cumulativeProbability) {
+                    const itemsOfRarity = availableItems.filter(item => item.rarity === rarity);
+                    if (itemsOfRarity.length > 0) {
+                        return itemsOfRarity[Math.floor(Math.random() * itemsOfRarity.length)];
+                    } else {
+                        console.warn(`No items found for rarity ${rarity} in machine ${currentMachine.id}.`);
+                        // Fallback: if no items for this rarity, just pick any random item
+                        return availableItems[Math.floor(Math.random() * availableItems.length)];
+                    }
+                }
+            }
+            console.error("Failed to select a random item. Returning first available item.");
+            return availableItems[0]; // Fallback to the very first item if all else fails
+        }
+
+        /**
+         * Handles the gacha pull logic with new animations.
+         * @param {boolean} isAutomated - True if the pull is from auto-pull.
+         */
+        async function handlePull(isAutomated = false) {
+            if (!userId) {
+                if (!isAutomated) showMessageBox("Login Required", "Please log in to make a pull.");
+                return;
+            }
+
+            if (isPulling) { // Prevent multiple pulls at once
+                if (!isAutomated) console.log("Already pulling, please wait.");
+                return;
+            }
+
+            const currentMachine = gachaMachines[currentMachineIndex];
+            const currentPullCost = Math.ceil(currentMachine.pullCost * PULL_COST_MULTIPLIER);
+
+            if (credits < currentPullCost) {
+                if (!isAutomated) showMessageBox("Not Enough Credits", `You need ${currentPullCost} credits to pull! You currently have ${credits.toFixed(0)}.`);
+                return;
+            }
+
+            isPulling = true; // Set pulling flag
+            mainActionButton.disabled = true;
+            mainActionButton.textContent = 'Pulling...';
+
+            // Pause idle income and automation during the pull animation to prevent conflicts
+            if (idleIncomeInterval) clearInterval(idleIncomeInterval);
+            stopAutomationIntervals(); // Stop all automation during manual pull
+
+            credits -= currentPullCost;
+            updateCreditsDisplay();
+
+            // Clear previous results and hide them completely
+            itemPulledIcon.textContent = ''; // Clear content
+            itemPulledName.textContent = '';
+            itemPulledRarity.textContent = '';
+            itemPulledIcon.style.opacity = '0'; // Ensure hidden for animation
+            itemPulledName.style.opacity = '0';
+            itemPulledRarity.style.opacity = '0';
+            itemPulledIcon.style.display = 'none'; // Ensure elements are hidden
+            itemPulledName.style.display = 'none';
+            itemPulledRarity.style.display = 'none';
+
+
+            // Remove animation classes to reset them for the next animation
+            itemPulledIcon.classList.remove('animated-item-icon');
+            itemPulledName.classList.remove('animated-item-name');
+            itemPulledRarity.classList.remove('animated-item-rarity');
+
+            // Force reflow to ensure removal of classes takes effect before re-adding
+            void itemPulledIcon.offsetWidth;
+
+            const pulledItem = selectRandomItem();
+
+            // Short delay to simulate the "pull" action before reveal
+            await new Promise(resolve => setTimeout(resolve, 500)); // Initial delay before reveal starts
+
+            // Set content of the pulled item
+            itemPulledIcon.textContent = pulledItem.emoji;
+            itemPulledName.textContent = pulledItem.name;
+            itemPulledRarity.textContent = pulledItem.rarity;
+            itemPulledRarity.className = `text-lg font-medium ${pulledItem.colorClass}`; // Apply rarity color
+
+            // Make elements block and then trigger animations
+            itemPulledIcon.style.display = 'block';
+            itemPulledIcon.classList.add('animated-item-icon');
+
+            await new Promise(resolve => setTimeout(resolve, 300)); // Delay for name after icon
+
+            itemPulledName.style.display = 'block';
+            itemPulledName.classList.add('animated-item-name');
+
+            await new Promise(resolve => setTimeout(resolve, 150)); // Small delay for rarity after name
+
+            itemPulledRarity.style.display = 'block';
+            itemPulledRarity.classList.add('animated-item-rarity');
+
+            inventory.push(pulledItem);
+
+            // If auto-sell is active, immediately sell the item
+            if (automationSettings.autoSell && prestigeUpgradesPurchased.autoSell) {
+                // Sell the last item added to inventory
+                const itemIndexToSell = inventory.length - 1;
+                if (itemIndexToSell >= 0) {
+                    const itemSold = inventory[itemIndexToSell];
+                    const earned = itemSold.value * SELL_VALUE_MULTIPLIER * GLOBAL_ITEM_VALUE_MULTIPLIER;
+                    credits += earned;
+                    lifetimeCreditsEarned += earned;
+                    inventory.splice(itemIndexToSell, 1);
+                    console.log(`Auto-sold ${itemSold.name} for ${earned.toFixed(0)} credits.`);
+                }
+            }
+
+            // Re-enable button and save data after the animation sequence
+            await new Promise(resolve => setTimeout(resolve, 500)); // Wait for full animation to finish
+
+            isPulling = false; // Reset pulling flag
+            mainActionButton.disabled = false; // Re-enable main action button
+            updateMachineDisplay(); // This will reset button text based on machine state
+            saveGameData();
+
+            startIdleIncome(); // Restart idle income
+            startAutomationIntervals(); // Restart automation after the pull
+        }
+
+        /**
+         * Handles unlocking the current gacha machine.
+         */
+        async function unlockMachine() {
+            if (!userId) {
+                showMessageBox("Login Required", "Please log in to unlock machines.");
+                return;
+            }
+
+            const currentMachine = gachaMachines[currentMachineIndex];
+            if (credits < currentMachine.unlockCost) {
+                showMessageBox("Not Enough Credits", `You need ${currentMachine.unlockCost} credits to unlock this machine! You currently have ${credits.toFixed(0)}.`);
+                return;
+            }
+
+            credits -= currentMachine.unlockCost;
+            machinesUnlockedStatus[currentMachine.id] = true;
+            updateCreditsDisplay();
+            updateMachineDisplay();
+            saveGameData();
+            showMessageBox("Unlocked!", `${currentMachine.name} has been unlocked!`);
+        }
+
+        /**
+         * Handles purchasing a regular upgrade.
+         * @param {string} upgradeId - The ID of the upgrade to purchase.
+         */
+        async function purchaseUpgrade(upgradeId) {
+            if (!userId) {
+                showMessageBox("Login Required", "Please log in to purchase upgrades.");
+                return;
+            }
+
+            const upgradeToPurchase = upgrades.find(u => u.id === upgradeId);
+
+            if (!upgradeToPurchase) {
+                console.error("Upgrade not found:", upgradeId);
+                return;
+            }
+
+            if (upgradesPurchased[upgradeId]) {
+                showMessageBox("Already Purchased", "You already own this upgrade!");
+                return;
+            }
+
+            if (credits < upgradeToPurchase.cost) {
+                showMessageBox("Not Enough Credits", `You need ${upgradeToPurchase.cost} credits to buy "${upgradeToPurchase.name}"! You currently have ${credits.toFixed(0)}.`);
+                return;
+            }
+
+            credits -= upgradeToPurchase.cost;
+            upgradesPurchased[upgradeId] = true;
+            applyUpgradeEffects();
+            updateCreditsDisplay();
+            updateUpgradesDisplay();
+            updateIdleIncomeDisplay();
+            saveGameData();
+            showMessageBox("Upgrade Purchased!", `You bought "${upgradeToPurchase.name}"!`);
+        }
+
+        /**
+         * Handles purchasing a prestige upgrade with Stardust.
+         * @param {string} upgradeId - The ID of the prestige upgrade to purchase.
+         */
+        async function purchasePrestigeUpgrade(upgradeId) {
+            if (!userId) {
+                showMessageBox("Login Required", "Please log in to purchase prestige upgrades.");
+                return;
+            }
+
+            const upgradeToPurchase = prestigeUpgrades.find(u => u.id === upgradeId);
+
+            if (!upgradeToPurchase) {
+                console.error("Prestige Upgrade not found:", upgradeId);
+                return;
+            }
+
+            if (prestigeUpgradesPurchased[upgradeId]) {
+                showMessageBox("Already Purchased", "You already own this prestige upgrade!");
+                return;
+            }
+
+            if (stardust < upgradeToPurchase.cost) {
+                showMessageBox("Not Enough Stardust", `You need ${upgradeToPurchase.cost} Stardust to buy "${upgradeToPurchase.name}"! You currently have ${stardust.toFixed(0)}.`);
+                return;
+            }
+
+            stardust -= upgradeToPurchase.cost;
+            prestigeUpgradesPurchased[upgradeId] = true;
+            applyUpgradeEffects(); // Re-apply all effects as new prestige upgrades are active
+            updatePrestigeUI();
+            updateIdleIncomeDisplay(); // Might affect idle income
+            updateInventoryDisplay(); // Might affect item values in inventory display
+            saveGameData();
+
+            // If an automation upgrade was just purchased, try to start its interval
+            if (upgradeToPurchase.type === 'automation') {
+                automationSettings[upgradeToPurchase.automationType] = true; // Automatically turn on upon purchase
+                startAutomationIntervals();
+                showMessageBox("Prestige Upgrade Purchased!", `You bought "${upgradeToPurchase.name}"! It's now ON.`);
+            } else {
+                showMessageBox("Prestige Upgrade Purchased!", `You bought "${upgradeToPurchase.name}"!`);
+            }
+        }
+
+        /**
+         * Toggles automation settings (autoPull, autoSell).
+         * @param {string} type - The type of automation to toggle ('autoPull' or 'autoSell').
+         */
+        function toggleAutomation(type) {
+            if (!prestigeUpgradesPurchased[type]) {
+                showMessageBox("Upgrade Not Purchased", `You must purchase the "${type}" prestige upgrade first!`);
+                return;
+            }
+
+            automationSettings[type] = !automationSettings[type];
+            startAutomationIntervals(); // Restart all intervals to reflect changes
+            updatePrestigeUI(); // Update the toggle button's display
+            saveGameData();
+            showMessageBox("Automation Toggled", `${type === 'autoPull' ? 'Auto-Pull' : 'Auto-Sell'} is now ${automationSettings[type] ? 'ON' : 'OFF'}.`);
+        }
+
+        /**
+         * Starts all active automation intervals based on current settings.
+         */
+        function startAutomationIntervals() {
+            stopAutomationIntervals(); // Clear existing intervals first
+
+            // Auto-Pull
+            if (automationSettings.autoPull && prestigeUpgradesPurchased.autoPull) {
+                const autoPullUpgrade = prestigeUpgrades.find(up => up.automationType === 'autoPull');
+                if (autoPullUpgrade) {
+                    autoPullInterval = setInterval(() => {
+                        // Only auto-pull if not already pulling and enough credits
+                        const currentMachine = gachaMachines[currentMachineIndex];
+                        const currentPullCost = Math.ceil(currentMachine.pullCost * PULL_COST_MULTIPLIER);
+                        if (!isPulling && credits >= currentPullCost) {
+                            handlePull(true); // Pass true to indicate automated pull
+                        }
+                    }, autoPullUpgrade.interval);
+                    console.log("Auto-Pull interval started.");
+                }
+            }
+
+            // Auto-Sell is now integrated directly into handlePull
+            // No separate auto-sell interval needed if it's instant after pull
+            // If auto-sell needs to sell existing inventory periodically, an interval would be needed here.
+            // For now, it only sells newly pulled items if active.
+        }
+
+        /**
+         * Stops all automation intervals.
+         */
+        function stopAutomationIntervals() {
+            if (autoPullInterval) {
+                clearInterval(autoPullInterval);
+                autoPullInterval = null;
+                console.log("Auto-Pull interval stopped.");
+            }
+            if (autoSellInterval) { // In case we add a separate auto-sell interval later
+                clearInterval(autoSellInterval);
+                autoSellInterval = null;
+                console.log("Auto-Sell interval stopped.");
+            }
+        }
+
+
+        /**
+         * Cycles through the gacha machines.
+         * @param {number} direction - -1 for previous, 1 for next.
+         */
+        function cycleMachine(direction) {
+            currentMachineIndex += direction;
+            if (currentMachineIndex < 0) {
+                currentMachineIndex = gachaMachines.length - 1;
+            } else if (currentMachineIndex >= gachaMachines.length) {
+                currentMachineIndex = 0;
+            }
+            updateMachineDisplay();
+            saveGameData();
+        }
+
+        /**
+         * Sells an item from the inventory.
+         * @param {number} index - The index of the item in the inventory array.
+         */
+        async function sellItem(index) {
+            if (!userId) {
+                showMessageBox("Login Required", "Please log in to sell items.");
+                return;
+            }
+            if (index < 0 || index >= inventory.length) {
+                console.error("Attempted to sell invalid item index:", index);
+                return;
+            }
+
+            const itemToSell = inventory[index];
+            // Apply global item value multiplier from prestige
+            const earned = itemToSell.value * SELL_VALUE_MULTIPLIER * GLOBAL_ITEM_VALUE_MULTIPLIER;
+            credits += earned;
+            lifetimeCreditsEarned += earned;
+            inventory.splice(index, 1);
+
+            updateCreditsDisplay();
+            updateInventoryDisplay();
+            saveGameData();
+        }
+
+        // Event Listeners
+        prevMachineButton.addEventListener('click', () => cycleMachine(-1));
+        nextMachineButton.addEventListener('click', () => cycleMachine(1));
+        prestigeButton.addEventListener('click', handlePrestige); // New event listener for prestige button
+
+        floatingMenuButton.addEventListener('click', openSideMenu);
+        sideMenuCloseButton.addEventListener('click', closeSideMenu);
+        sideMenuOverlay.addEventListener('click', (event) => {
+            if (event.target === sideMenuOverlay) {
+                closeSideMenu();
+            }
+        });
+
+        // Authentication Event Listeners
+        loginButton.addEventListener('click', handleLogin);
+        registerButton.addEventListener('click', handleRegister);
+        logoutButton.addEventListener('click', handleLogout);
+
+        showRegisterLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            showPage(registerPage);
+        });
+
+        showLoginLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            showPage(loginPage);
+        });
+
+        // Menu Navigation
+        menuGameButton.addEventListener('click', () => showPage(gamePage));
+        menuAccountButton.addEventListener('click', () => {
+            updateAccountPage();
+            showPage(accountPage);
+        });
+        menuLeaderboardButton.addEventListener('click', () => {
+            fetchLeaderboardData();
+            showPage(leaderboardPage);
+        });
+        menuPrestigeUpgradesButton.addEventListener('click', () => {
+            updatePrestigeUI(); // Ensure prestige UI is updated when opening
+            showPage(prestigeUpgradesPage);
+        });
+
+        function openSideMenu() {
+            sideMenuOverlay.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSideMenu() {
+            document.body.style.overflow = '';
+            sideMenuOverlay.classList.remove('open');
+        }
+
+        // Initialize Firebase and game data when the window loads
+        window.onload = initializeFirebase;
+    </script>
+</body>
+</html>
