@@ -1,10 +1,9 @@
-    <!-- Here is the first version of the game. Built with the help of Gemini -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gacha Galaxy</title>
+    <title>Gacha Machine Tycoon</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -22,23 +21,17 @@
             position: relative; /* For absolutely positioned children like overlays */
         }
 
-        /* Fixed Header Styling - Now sticky to stay in document flow while at top */
+        /* Header Styling - Now a simple flowing text header */
         .app-header {
-            position: sticky; /* Sticky positions it relative to its normal position, then offsets it */
-            top: 0;
-            left: 0;
-            width: 100%;
             text-align: center;
-            background-image: linear-gradient(to right top, #a1d9d9, #91d0e1, #80c7e8, #6bbdf0, #54b4f6); /* Match body background */
-            padding: 1rem 0; /* Consistent padding top/bottom */
-            height: 4.25rem; /* Explicit height (font-size 2.25rem + 2rem padding) */
-            line-height: 2.25rem; /* Center text vertically */
-            z-index: 50; /* Above regular content, below overlays */
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            background-color: transparent; /* No background image */
+            padding: 0.5rem 0; /* Reduced padding for a smaller height */
             color: white;
             font-size: 2.25rem;
             font-weight: extrabold;
-            box-sizing: border-box; /* Include padding in height calculation */
+            box-sizing: border-box;
+            margin-bottom: 1rem; /* Add some space below the title */
+            flex-shrink: 0; /* Prevent it from shrinking */
         }
 
         /* Main content area to hold all "pages" below the header */
@@ -49,11 +42,11 @@
             overflow: hidden; /* Hide overflow from its children */
             display: flex; /* Use flex to center the .full-page-container children if needed */
             justify-content: center;
-            align-items: center;
+            align-items: flex-start; /* Align content to the top within main wrapper */
             padding: 20px; /* Padding for the entire content area */
             box-sizing: border-box;
-            /* Adjust padding-top to account for the sticky header's height */
-            padding-top: calc(4.25rem + 20px); /* Header height + existing top padding */
+            /* No padding-top calculation needed as header is no longer fixed */
+            margin-top: 0; /* Ensures it starts immediately after the header */
         }
 
 
@@ -72,9 +65,30 @@
         }
 
         /* Auth/Account forms and Leaderboard card within their pages */
-        #login-page .auth-form, #register-page .auth-form, #account-page .auth-form, #leaderboard-page .card, #prestige-upgrades-page .card {
+        #login-page .auth-form, #register-page .auth-form, #account-page .auth-form, #leaderboard-page .card, #prestige-upgrades-page .card { /* Added new pages */
             max-width: 400px; /* Keep forms from being too wide */
             width: 100%;
+        }
+
+        /* Specific styling for collection log and achievements cards to enable internal scrolling */
+        #collection-log-page .card, #achievements-page .card {
+            max-width: 600px; /* Slightly wider for these pages */
+            width: 100%;
+            flex-grow: 1; /* Allow card to take available vertical space */
+            max-height: 100%; /* Important: Constrain height to enable internal scrolling */
+            overflow-y: auto; /* Enable scrolling for content within the card */
+            display: flex; /* Make it a flex container */
+            flex-direction: column; /* Stack its children vertically */
+            gap: 1rem; /* Space out internal elements */
+        }
+        #collection-log-page .card h2, #achievements-page .card h2,
+        #collection-log-page .card p, #achievements-page .card p {
+            flex-shrink: 0; /* Prevent title/description from shrinking */
+        }
+        #collection-log-page .card .grid-container,
+        #achievements-page .card .flex-col {
+            flex-grow: 1; /* Allow the content lists to take up remaining space */
+            overflow-y: auto; /* Make the list itself scrollable if needed */
         }
 
 
@@ -234,7 +248,7 @@
             margin-top: 1rem;
         }
 
-        .inventory-item, .upgrade-item {
+        .inventory-item, .upgrade-item, .collection-item, .achievement-item { /* Added new items */
             background-color: #f8fafc; /* Lightest blue-gray */
             border-radius: 0.75rem;
             padding: 0.5rem;
@@ -252,7 +266,7 @@
             background-color: #eff6ff; /* Slightly darker on hover */
         }
 
-        .inventory-item-icon {
+        .inventory-item-icon, .collection-item-icon, .achievement-icon { /* Added new icons */
             font-size: 2rem; /* Larger icons */
             margin-bottom: 0.25rem;
         }
@@ -270,6 +284,56 @@
             background-color: #dcfce7; /* Light green for purchased */
             opacity: 0.8;
         }
+
+        /* Collection Log specific styles */
+        .collection-item.uncollected {
+            opacity: 0.4;
+            filter: grayscale(100%);
+        }
+
+        .collection-item {
+            padding: 0.75rem; /* More padding for collection items */
+        }
+
+        /* Achievement specific styles */
+        .achievement-item {
+            padding: 0.75rem;
+            text-align: left; /* Align text left */
+            align-items: flex-start; /* Align icon/title to start */
+            background-color: #ffffff; /* Explicit background */
+            border-radius: 0.75rem; /* Rounded corners */
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* Subtle shadow */
+        }
+
+        .achievement-item.completed {
+            background-color: #dcfce7; /* Light green for completed */
+            border: 1px solid #34d399;
+        }
+
+        .achievement-item .achievement-title {
+            font-weight: bold;
+            font-size: 1rem;
+            color: #1f2937;
+        }
+
+        .achievement-item .achievement-description {
+            font-size: 0.85rem;
+            color: #4b5563;
+        }
+
+        .achievement-item .achievement-reward {
+            font-size: 0.8rem;
+            color: #60a5fa; /* Blue for rewards */
+            margin-top: 0.25rem;
+            font-weight: 600;
+        }
+
+        .achievement-item .achievement-status {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-top: 0.5rem;
+        }
+
 
         /* Side Menu Overlay */
         #side-menu-overlay {
@@ -610,7 +674,7 @@
     </style>
 </head>
 <body>
-    <!-- Header is now sticky at the top -->
+    <!-- Header is now a simple flowing text header -->
     <h1 class="app-header">
         🌌 Gacha Machine Tycoon 🌟
     </h1>
@@ -723,6 +787,31 @@
                 </div>
             </div>
         </div>
+
+        <!-- Collection Log Page -->
+        <div id="collection-log-page" class="full-page-container flex-col">
+            <div class="card p-6 md:p-8 max-w-xl w-full">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Collection Log</h2>
+                <p class="text-gray-600 mb-4">Discover all the items in the Gacha Galaxy!</p>
+                <div id="collection-log-list" class="grid-container">
+                    <!-- Collection items will be inserted here -->
+                    <p id="empty-collection-message" class="col-span-full text-center text-gray-500 italic hidden">No items to display yet. Pull from machines to find them!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Achievements Page -->
+        <div id="achievements-page" class="full-page-container flex-col">
+            <div class="card p-6 md:p-8 max-w-xl w-full">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Achievements</h2>
+                <p class="text-gray-600 mb-4">Complete challenges to earn rewards!</p>
+                <div id="achievements-list" class="flex flex-col gap-4">
+                    <!-- Achievements will be inserted here -->
+                    <p id="empty-achievements-message" class="col-span-full text-center text-gray-500 italic hidden">No achievements defined yet. Check back later!</p>
+                </div>
+            </div>
+        </div>
+
     </div> <!-- End of .main-content-wrapper -->
 
     <!-- Menu button moved outside page containers to be always visible -->
@@ -741,6 +830,8 @@
                 <button id="menu-account-button" class="nav-button w-full">Account</button>
                 <button id="menu-leaderboard-button" class="nav-button w-full">Leaderboard</button>
                 <button id="menu-prestige-upgrades-button" class="nav-button w-full">Prestige Upgrades</button>
+                <button id="menu-collection-log-button" class="nav-button w-full">Collection Log</button>
+                <button id="menu-achievements-button" class="nav-button w-full">Achievements</button>
                 <!-- Prestige Button - Moved here -->
                 <button id="prestige-button" class="prestige-button w-full mt-4">
                     Prestige (Earn 0 Stardust)
@@ -870,6 +961,8 @@
         const accountPage = document.getElementById('account-page');
         const leaderboardPage = document.getElementById('leaderboard-page');
         const prestigeUpgradesPage = document.getElementById('prestige-upgrades-page');
+        const collectionLogPage = document.getElementById('collection-log-page'); // New
+        const achievementsPage = document.getElementById('achievements-page'); // New
 
         // Account Page Elements
         const accountUsernameDisplay = document.getElementById('account-username');
@@ -885,6 +978,14 @@
         const prestigeUpgradesList = document.getElementById('prestige-upgrades-list');
         const noPrestigeUpgradesMessage = document.getElementById('no-prestige-upgrades-message');
 
+        // Collection Log Elements
+        const collectionLogList = document.getElementById('collection-log-list');
+        const emptyCollectionMessage = document.getElementById('empty-collection-message');
+
+        // Achievements Elements
+        const achievementsList = document.getElementById('achievements-list');
+        const emptyAchievementsMessage = document.getElementById('empty-achievements-message');
+
         // Floating Menu Elements
         const floatingMenuButton = document.getElementById('floating-menu-button');
         const sideMenuOverlay = document.getElementById('side-menu-overlay');
@@ -893,6 +994,8 @@
         const menuAccountButton = document.getElementById('menu-account-button');
         const menuLeaderboardButton = document.getElementById('menu-leaderboard-button');
         const menuPrestigeUpgradesButton = document.getElementById('menu-prestige-upgrades-button');
+        const menuCollectionLogButton = document.getElementById('menu-collection-log-button'); // New
+        const menuAchievementsButton = document.getElementById('menu-achievements-button'); // New
 
         // Message box elements
         const messageBox = document.getElementById('message-box');
@@ -972,11 +1075,20 @@
         let lastSaveTime = Date.now();
         let lifetimeCreditsEarned = 0;
         let username = 'Anonymous';
+        let collectionLog = {}; // New: Tracks all items ever collected
+        let achievements = {}; // New: Tracks completed achievements
+        let totalPulls = 0; // New: Total pulls for achievement tracking
+        let totalItemsSold = 0; // New: Total items sold for achievement tracking
+        let prestigeCount = 0; // New: Prestige count for achievement tracking
 
         let idleIncomeInterval;
         let autoPullInterval = null; // New interval for auto pull
         let autoSellInterval = null; // New interval for auto sell
         let isPulling = false; // Flag to prevent multiple simultaneous pulls
+
+        // NEW: Debounce timer for saving
+        let saveTimer = null;
+        const SAVE_DEBOUNCE_DELAY_MS = 3000; // Save every 3 seconds at most
 
 
         // Dynamic multipliers affected by upgrades
@@ -1094,7 +1206,7 @@
             { id: 'pullCostRed3', name: 'Major Discount', description: 'Reduces pull costs by 25%', emoji: '💸', cost: 2500, type: 'pullCostReduction', multiplier: 0.75 },
 
             // Sell Value Multipliers
-            { id: 'sellValueMult1', name: 'Slightly Better Buyer', description: 'Increases sell value by 10%', emoji: '📈', cost: 150, type: 'sellValueMultiplier', multiplier: 1.10 },
+            { id: 'sellValueMult1', name: 'Slightly Better Buyer', description: 'Increases sell value by 10%', emoji: '�', cost: 150, type: 'sellValueMultiplier', multiplier: 1.10 },
             { id: 'sellValueMult2', name: 'Expert Appraiser', description: 'Increases sell value by 25%', emoji: '💰', cost: 750, type: 'sellValueMultiplier', multiplier: 1.25 },
         ];
 
@@ -1108,6 +1220,85 @@
             { id: 'superIdleGen', name: 'Super Idle Generator', description: 'Doubles idle credit generation.', emoji: '⚡', cost: 30, type: 'idleIncomeMultiplier', multiplier: 2.0 },
         ];
 
+        // NEW: Achievement Definitions
+        const achievementsListDefinition = [
+            {
+                id: 'firstPull',
+                name: 'First Contact',
+                description: 'Perform your very first gacha pull.',
+                emoji: '✨',
+                type: 'totalPulls',
+                target: 1,
+                reward: { type: 'credits', amount: 500 }
+            },
+            {
+                id: 'noviceCollector',
+                name: 'Novice Collector',
+                description: 'Collect 10 unique items.',
+                emoji: '🌟',
+                type: 'uniqueItems',
+                target: 10,
+                reward: { type: 'stardust', amount: 1 }
+            },
+            {
+                id: 'creditHoarder',
+                name: 'Credit Hoarder',
+                description: 'Accumulate 10,000 lifetime credits.',
+                emoji: '💰',
+                type: 'lifetimeCredits',
+                target: 10000,
+                reward: { type: 'credits', amount: 1000 }
+            },
+            {
+                id: 'machineMaven',
+                name: 'Machine Maven',
+                description: 'Unlock 3 different gacha machines.',
+                emoji: '⚙️',
+                type: 'unlockedMachines',
+                target: 3,
+                reward: { type: 'stardust', amount: 2 }
+            },
+            {
+                id: 'sellAddict',
+                name: 'Sell Addict',
+                description: 'Sell 50 items from your inventory.',
+                emoji: '♻️',
+                type: 'totalItemsSold',
+                target: 50,
+                reward: { type: 'credits', amount: 2000 }
+            },
+            {
+                id: 'prestigeInitiate',
+                name: 'Prestige Initiate',
+                description: 'Perform your first Prestige.',
+                emoji: '👑',
+                type: 'prestigeCount',
+                target: 1,
+                reward: { type: 'stardust', amount: 5 }
+            },
+            {
+                id: 'gachaAddict',
+                name: 'Gacha Addict',
+                description: 'Perform 100 total gacha pulls.',
+                emoji: '🎰',
+                type: 'totalPulls',
+                target: 100,
+                reward: { type: 'credits', amount: 5000 }
+            },
+            {
+                id: 'masterCollector',
+                name: 'Master Collector',
+                description: 'Collect all unique items in the game!',
+                emoji: '🏆',
+                type: 'collectionCompletion',
+                target: 'all', // Special target for full collection
+                reward: { type: 'stardust', amount: 10 }
+            }
+        ];
+
+        // NEW: Define rarity order for sorting the collection log
+        const RARITY_ORDER = ['Common', 'Rare', 'Epic', 'Legendary', 'Mythic', 'Cosmic'];
+
 
         /**
          * Switches the currently visible page by directly manipulating display style.
@@ -1116,7 +1307,7 @@
          */
         function showPage(pageToShow) {
             console.log(`showPage called: ${pageToShow.id}`);
-            const allPages = [loginPage, registerPage, gamePage, accountPage, leaderboardPage, prestigeUpgradesPage];
+            const allPages = [loginPage, registerPage, gamePage, accountPage, leaderboardPage, prestigeUpgradesPage, collectionLogPage, achievementsPage]; // Added new pages
             allPages.forEach(page => {
                 if (page === pageToShow) {
                     page.style.display = 'flex'; // Show this page as flex
@@ -1129,9 +1320,13 @@
 
             closeSideMenu(); // Always close side menu when switching main pages
 
-            // Explicitly update UI if the game page is being shown
+            // Explicitly update UI for relevant pages when showing them
             if (pageToShow === gamePage) {
-                updateUI(); // Ensures the correct machine is displayed
+                updateMachineDisplay();
+            } else if (pageToShow === collectionLogPage) {
+                updateCollectionLogDisplay();
+            } else if (pageToShow === achievementsPage) {
+                updateAchievementsDisplay();
             }
         }
 
@@ -1206,7 +1401,8 @@
                 if (!FIREBASE_CONFIG.apiKey || !FIREBASE_CONFIG.projectId) {
                     showMessageBox("Firebase Setup Required",
                         "To save your game progress and enable accounts, please provide your Firebase configuration in the script. " +
-                        "Look for `const FIREBASE_CONFIG = { ... };` near the top of the script."
+                        "Look for `const FIREBASE_CONFIG = { ... };` near the top of the script." +
+                        "A default empty API key has been left there as a placeholder."
                     );
                     console.error("Firebase config is missing or incomplete. Cannot initialize Firebase.");
                     return;
@@ -1269,6 +1465,11 @@
             automationSettings = { autoPull: false, autoSell: false };
             lastSaveTime = Date.now();
             lifetimeCreditsEarned = 0;
+            collectionLog = {}; // Reset collection log
+            achievements = {}; // Reset achievements
+            totalPulls = 0; // Reset counters
+            totalItemsSold = 0;
+            prestigeCount = 0;
 
             PULL_COST_MULTIPLIER = 1.0;
             SELL_VALUE_MULTIPLIER = 1.0;
@@ -1324,13 +1525,33 @@
                     automationSettings = currentUserData.automationSettings || { autoPull: false, autoSell: false }; // Load automation settings
                     lastSaveTime = currentUserData.lastSaveTime || Date.now();
                     lifetimeCreditsEarned = Number(currentUserData.lifetimeCreditsEarned) || 0;
+                    totalPulls = Number(currentUserData.totalPulls) || 0; // Load total pulls
+                    totalItemsSold = Number(currentUserData.totalItemsSold) || 0; // Load total items sold
+                    prestigeCount = Number(currentUserData.prestigeCount) || 0;
+
 
                     try {
                         inventory = currentUserData.inventory ? JSON.parse(currentUserData.inventory) : [];
+                        console.log("Inventory data from Firestore (after parse):", inventory); // ADDED LOG
                     } catch (e) {
                         inventory = currentUserData.inventory || [];
-                        console.warn("Inventory data was not a valid JSON string, using directly.");
+                        console.warn("Inventory data was not a valid JSON string, using directly. Current inventory:", inventory); // ADDED LOG
                     }
+
+                    try {
+                        collectionLog = currentUserData.collectionLog ? JSON.parse(currentUserData.collectionLog) : {};
+                    } catch (e) {
+                        collectionLog = currentUserData.collectionLog || {};
+                        console.warn("Collection Log data was not a valid JSON string, using directly.");
+                    }
+
+                    try {
+                        achievements = currentUserData.achievements ? JSON.parse(currentUserData.achievements) : {};
+                    } catch (e) {
+                        achievements = currentUserData.achievements || {};
+                        console.warn("Achievements data was not a valid JSON string, using directly.");
+                    }
+
 
                     const currentTime = Date.now();
                     const timeElapsedSeconds = Math.floor((currentTime - lastSaveTime) / 1000);
@@ -1370,16 +1591,34 @@
                         automationSettings = currentUserData.automationSettings || automationSettings; // Update automation settings from snapshot
                         lastSaveTime = currentUserData.lastSaveTime || Date.now();
                         lifetimeCreditsEarned = Number(currentUserData.lifetimeCreditsEarned) || 0;
+                        totalPulls = Number(currentUserData.totalPulls) || 0;
+                        totalItemsSold = Number(currentUserData.totalItemsSold) || 0;
+                        prestigeCount = Number(currentUserData.prestigeCount) || 0;
 
                         try {
                             inventory = currentUserData.inventory ? JSON.parse(currentUserData.inventory) : inventory;
+                            console.log("Inventory data from Firestore snapshot (after parse):", inventory); // ADDED LOG
                         } catch (e) {
                             inventory = currentUserData.inventory || inventory;
-                            console.warn("Inventory data was not a valid JSON string from snapshot, using directly.");
+                            console.warn("Inventory data was not a valid JSON string from snapshot, using directly. Current inventory:", inventory); // ADDED LOG
                         }
+                        try {
+                            collectionLog = currentUserData.collectionLog ? JSON.parse(currentUserData.collectionLog) : collectionLog;
+                        } catch (e) {
+                            collectionLog = currentUserData.collectionLog || collectionLog;
+                            console.warn("Collection Log data was not a valid JSON string from snapshot, using directly.");
+                        }
+                        try {
+                            achievements = currentUserData.achievements ? JSON.parse(currentUserData.achievements) : {};
+                        } catch (e) {
+                            achievements = currentUserData.achievements || achievements;
+                            console.warn("Achievements data was not a valid JSON string from snapshot, using directly.");
+                        }
+
                         applyUpgradeEffects();
                         updateUI();
                         startAutomationIntervals(); // Re-evaluate and restart automation if settings changed
+                        checkAchievements(); // Check achievements on data update
                     } else {
                         console.log("User document disappeared from snapshot, forcing re-initialization (might indicate data deletion).");
                         // This might happen if user data is deleted from Firestore console.
@@ -1400,6 +1639,15 @@
             }
         }
 
+        /**
+         * Generates a unique ID for a gacha item for collection log tracking.
+         * @param {Object} item - The gacha item object.
+         * @param {string} machineId - The ID of the machine the item belongs to.
+         * @returns {string} Unique item ID.
+         */
+        function generateItemId(item, machineId) {
+            return `${machineId.toLowerCase()}_${item.name.toLowerCase().replace(/\s/g, '_')}_${item.rarity.toLowerCase()}`;
+        }
 
         /**
          * Initializes user data in Firestore if it doesn't exist for a newly signed-up/in user.
@@ -1420,7 +1668,7 @@
 
                 await setDoc(userDocRef, {
                     credits: initialCredits,
-                    inventory: JSON.stringify([]),
+                    inventory: JSON.stringify([]), // Correctly stringified empty array
                     currentMachineIndex: 0,
                     machinesUnlockedStatus: initialMachinesUnlocked,
                     upgradesPurchased: {},
@@ -1429,7 +1677,12 @@
                     automationSettings: { autoPull: false, autoSell: false }, // Initialize automation settings
                     lastSaveTime: Date.now(),
                     lifetimeCreditsEarned: initialCredits,
-                    username: auth.currentUser?.displayName || 'Player'
+                    username: auth.currentUser?.displayName || 'Player',
+                    collectionLog: JSON.stringify({}),
+                    achievements: JSON.stringify({}),
+                    totalPulls: 0,
+                    totalItemsSold: 0,
+                    prestigeCount: 0
                 });
                 credits = initialCredits;
                 lifetimeCreditsEarned = initialCredits;
@@ -1437,7 +1690,13 @@
                 prestigeUpgradesPurchased = {};
                 automationSettings = { autoPull: false, autoSell: false };
                 username = auth.currentUser?.displayName || 'Player';
-                console.log("Initialized new user data with 100 credits.");
+                collectionLog = {};
+                achievements = {};
+                totalPulls = 0;
+                totalItemsSold = 0;
+                prestigeCount = 0;
+                inventory = []; // Ensure in-memory inventory is also reset/empty for new user
+                console.log("Initialized new user data with 100 credits. Current inventory:", inventory); // ADDED LOG
 
                 await updateLeaderboardEntry(userId, username, lifetimeCreditsEarned);
                 fetchLeaderboardData(); // Refresh leaderboard with new user
@@ -1550,6 +1809,8 @@
             updateIdleIncomeDisplay();
             updateAccountPage();
             updatePrestigeUI(); // Call new prestige UI update
+            // No need to call updateCollectionLogDisplay or updateAchievementsDisplay here,
+            // as they are called when their respective pages are shown.
         }
 
         /**
@@ -1563,6 +1824,7 @@
          * Updates the inventory display in the UI.
          */
         function updateInventoryDisplay() {
+            console.log("updateInventoryDisplay called. Current inventory:", inventory); // ADDED LOG
             inventoryList.innerHTML = '';
             if (inventory.length === 0) {
                 emptyInventoryMessage.style.display = 'block';
@@ -1675,7 +1937,7 @@
             if (prestigeUpgrades.length === 0) {
                 noPrestigeUpgradesMessage.style.display = 'block';
             } else {
-                noPrestigeUpgradesMessage.style.display = 'none';
+                noPrestigeUpgradesMessage.style.display = 'none'; /* Corrected variable name */
                 prestigeUpgrades.forEach(upgrade => {
                     const isPurchased = prestigeUpgradesPurchased[upgrade.id];
                     const upgradeDiv = document.createElement('div');
@@ -1735,6 +1997,133 @@
             prestigeButton.textContent = `Prestige (Earn ${stardustToEarn} Stardust)`;
         }
 
+        /**
+         * Updates the collection log display.
+         */
+        function updateCollectionLogDisplay() {
+            collectionLogList.innerHTML = '';
+            let totalUniqueItems = 0;
+            const allGameItems = [];
+
+            // Gather all possible items from all machines
+            gachaMachines.forEach(machine => {
+                const itemsInMachine = gachaItems[machine.id];
+                itemsInMachine.forEach(item => {
+                    const itemId = generateItemId(item, machine.id); // Get unique ID for the item
+                    const collectedData = collectionLog[itemId] || { count: 0, collected: false };
+                    allGameItems.push({
+                        ...item,
+                        itemId: itemId,
+                        isCollected: collectedData.collected,
+                        count: collectedData.count
+                    });
+                    totalUniqueItems++;
+                });
+            });
+
+            // Sort items by rarity first, then by name for consistent order
+            allGameItems.sort((a, b) => {
+                const rarityA = RARITY_ORDER.indexOf(a.rarity);
+                const rarityB = RARITY_ORDER.indexOf(b.rarity);
+
+                if (rarityA !== rarityB) {
+                    return rarityA - rarityB;
+                }
+                // If rarities are the same, sort by name
+                return a.name.localeCompare(b.name);
+            });
+
+            if (allGameItems.length === 0) {
+                emptyCollectionMessage.style.display = 'block';
+            } else {
+                emptyCollectionMessage.style.display = 'none';
+                allGameItems.forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = `collection-item ${item.isCollected ? '' : 'uncollected'} flex flex-col items-center justify-center text-center`;
+                    itemDiv.innerHTML = `
+                        <div class="collection-item-icon ${item.colorClass}">${item.emoji}</div>
+                        <div class="font-semibold">${item.name}</div>
+                        <div class="text-xs italic ${item.colorClass}">${item.rarity}</div>
+                        <div class="text-xs text-gray-500">Collected: ${item.count}</div>
+                    `;
+                    collectionLogList.appendChild(itemDiv);
+                });
+            }
+        }
+
+        /**
+         * Updates the achievements display.
+         */
+        function updateAchievementsDisplay() {
+            achievementsList.innerHTML = '';
+            let allAchievementsCompleted = true; // For 'Master Collector' achievement
+
+            if (achievementsListDefinition.length === 0) {
+                emptyAchievementsMessage.style.display = 'block';
+            } else {
+                emptyAchievementsMessage.style.display = 'none';
+                achievementsListDefinition.forEach(achievementDef => {
+                    const isCompleted = achievements[achievementDef.id]?.completed;
+                    if (!isCompleted) {
+                        allAchievementsCompleted = false; // Mark false if any achievement is not completed
+                    }
+
+                    const achievementDiv = document.createElement('div');
+                    // Removed 'card' class from achievementDiv
+                    achievementDiv.className = `achievement-item ${isCompleted ? 'completed' : ''} flex flex-col items-start`;
+                    achievementDiv.innerHTML = `
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="achievement-icon text-2xl">${achievementDef.emoji}</div>
+                            <div class="achievement-title">${achievementDef.name}</div>
+                            ${isCompleted ? '<span class="ml-auto text-green-600 font-bold">✓ COMPLETED</span>' : ''}
+                        </div>
+                        <div class="achievement-description">${achievementDef.description}</div>
+                        ${achievementDef.reward
+                            ? `<div class="achievement-reward">Reward: ${achievementDef.reward.amount} ${achievementDef.reward.type.toUpperCase()}</div>`
+                            : ''
+                        }
+                        ${!isCompleted && achievementDef.type !== 'collectionCompletion' // Don't show progress for collection completion, it's all or nothing
+                            ? `<div class="achievement-status text-gray-600">Progress: ${getCurrentAchievementProgress(achievementDef)} / ${achievementDef.target}</div>`
+                            : ''
+                        }
+                    `;
+                    achievementsList.appendChild(achievementDiv);
+                });
+            }
+
+            // Check for Master Collector (if all others are completed)
+            const masterCollector = achievementsListDefinition.find(ach => ach.id === 'masterCollector');
+            if (masterCollector && allAchievementsCompleted && !achievements[masterCollector.id]?.completed) {
+                // This check is a final verification after all individual achievements have been rendered.
+                // The actual achievement completion logic is in checkAchievements().
+                // This block just ensures the display is correct for this specific achievement
+                // if it's the last one pending based on all others being done.
+                // For 'Master Collector', its `checkAchievement` function will actually set it to completed.
+            }
+        }
+
+        /**
+         * Gets the current progress for a given achievement.
+         * @param {Object} achievementDef - The achievement definition.
+         * @returns {number} The current progress towards the achievement.
+         */
+        function getCurrentAchievementProgress(achievementDef) {
+            switch (achievementDef.type) {
+                case 'totalPulls': return totalPulls;
+                case 'lifetimeCredits': return lifetimeCreditsEarned;
+                case 'unlockedMachines':
+                    return Object.values(machinesUnlockedStatus).filter(status => status).length;
+                case 'totalItemsSold': return totalItemsSold;
+                case 'prestigeCount': return prestigeCount;
+                case 'uniqueItems':
+                    return Object.values(collectionLog).filter(item => item.collected).length;
+                case 'collectionCompletion':
+                    // This is handled by a specific check in checkAchievements
+                    return Object.values(collectionLog).filter(item => item.collected).length; // Show collected count for this too
+                default: return 0;
+            }
+        }
+
 
         /**
          * Updates the account page display.
@@ -1763,7 +2152,7 @@
 
             // Apply idle income multiplier from prestige upgrades
             prestigeUpgrades.forEach(upgrade => {
-                if (upgrade.type === 'idleIncomeMultiplier' && prestigeUpgradesPurchased[upgrade.id]) {
+                if (prestigeUpgradesPurchased[upgrade.id]) {
                     totalIncome *= upgrade.multiplier;
                 }
             });
@@ -1791,7 +2180,8 @@
                     credits += incomeThisTick;
                     lifetimeCreditsEarned += incomeThisTick;
                     updateCreditsDisplay();
-                    saveGameData();
+                    debouncedSaveGameData(); // Use debounced save
+                    checkAchievements(); // Check achievements as credits accumulate
                 }
             }, 1000);
         }
@@ -1843,20 +2233,17 @@
             });
             upgradesPurchased = {}; // Reset regular upgrades
             stardust += stardustToEarn;
-            // Lifetime credits are NOT reset here, as they accumulate across prestiges for leaderboard
-            // Only current credits are reset to calculate stardust based on current run progress.
-            // lifetimeCreditsEarned remains for the leaderboard, but the current run's earnings restart for prestige calc.
-            // Correction: Previous logic for lifetimeCreditsEarned for leaderboard was already correct.
-            // The user wants prestige based on *current* credits, so lifetimeCreditsEarned is NOT reset here.
-            // The *calculation* for stardust now uses `credits`, which are reset.
+            prestigeCount++; // Increment prestige count for achievement
 
             stopAutomationIntervals(); // Stop automation before resetting and saving
             startAutomationIntervals(); // Restart based on existing automation settings
 
             applyUpgradeEffects(); // Re-apply multipliers as regular upgrades are reset
             updateUI(); // Update all UI elements
+            checkAchievements(); // Check achievements after prestige (e.g., prestige milestones)
 
-            await saveGameData(); // Save reset state and new stardust
+            // Save immediately after prestige for critical state change
+            await saveGameData();
             showMessageBox("Prestige Complete!", `You have successfully prestiged and earned ${stardustToEarn} Stardust!`);
         }
 
@@ -1878,15 +2265,33 @@
                     automationSettings: automationSettings,
                     lastSaveTime: Date.now(),
                     lifetimeCreditsEarned: lifetimeCreditsEarned,
-                    username: auth.currentUser?.displayName || 'Player'
+                    username: auth.currentUser?.displayName || 'Player',
+                    collectionLog: JSON.stringify(collectionLog), // Save collection log
+                    achievements: JSON.stringify(achievements), // Save achievements
+                    totalPulls: totalPulls,
+                    totalItemsSold: totalItemsSold,
+                    prestigeCount: prestigeCount
                 });
-                console.log("Game data saved.");
+                console.log("Game data saved."); // ADDED LOG
                 await updateLeaderboardEntry(userId, auth.currentUser?.displayName || 'Player', lifetimeCreditsEarned);
             }
             catch (error) {
                 console.error("Error saving game data:", error);
                 showMessageBox("Save Error", "Failed to save game progress. Please check your connection or Firestore rules.");
             }
+        }
+
+        /**
+         * Debounced version of saveGameData to prevent too frequent writes.
+         */
+        function debouncedSaveGameData() {
+            if (saveTimer) {
+                clearTimeout(saveTimer);
+            }
+            saveTimer = setTimeout(() => {
+                saveGameData();
+                saveTimer = null;
+            }, SAVE_DEBOUNCE_DELAY_MS);
         }
 
         /**
@@ -1951,6 +2356,7 @@
             stopAutomationIntervals(); // Stop all automation during manual pull
 
             credits -= currentPullCost;
+            totalPulls++; // Increment total pulls for achievement tracking
             updateCreditsDisplay();
 
             // Clear previous results and hide them completely
@@ -1974,6 +2380,16 @@
             void itemPulledIcon.offsetWidth;
 
             const pulledItem = selectRandomItem();
+
+            // NEW: Update collection log for the pulled item
+            const pulledItemId = generateItemId(pulledItem, currentMachine.id);
+            if (!collectionLog[pulledItemId]) {
+                collectionLog[pulledItemId] = { count: 0, collected: true };
+            } else {
+                collectionLog[pulledItemId].collected = true; // Ensure it's marked as collected
+            }
+            collectionLog[pulledItemId].count++;
+
 
             // Short delay to simulate the "pull" action before reveal
             await new Promise(resolve => setTimeout(resolve, 500)); // Initial delay before reveal starts
@@ -1999,6 +2415,8 @@
             itemPulledRarity.classList.add('animated-item-rarity');
 
             inventory.push(pulledItem);
+            console.log("Pulled item:", pulledItem, "Inventory immediately after push (before auto-sell check):", inventory); // ADDED LOG
+            updateInventoryDisplay(); // Call updateInventoryDisplay immediately after pushing the item
 
             // If auto-sell is active, immediately sell the item
             if (automationSettings.autoSell && prestigeUpgradesPurchased.autoSell) {
@@ -2010,7 +2428,8 @@
                     credits += earned;
                     lifetimeCreditsEarned += earned;
                     inventory.splice(itemIndexToSell, 1);
-                    console.log(`Auto-sold ${itemSold.name} for ${earned.toFixed(0)} credits.`);
+                    totalItemsSold++; // Increment total items sold for achievement
+                    console.log(`Auto-sold ${itemSold.name} for ${earned.toFixed(0)} credits. Inventory after auto-sell:`, inventory); // ADDED LOG
                 }
             }
 
@@ -2020,7 +2439,8 @@
             isPulling = false; // Reset pulling flag
             mainActionButton.disabled = false; // Re-enable main action button
             updateMachineDisplay(); // This will reset button text based on machine state
-            saveGameData();
+            checkAchievements(); // Check achievements after a pull
+            debouncedSaveGameData(); // Use debounced save
 
             startIdleIncome(); // Restart idle income
             startAutomationIntervals(); // Restart automation after the pull
@@ -2045,7 +2465,8 @@
             machinesUnlockedStatus[currentMachine.id] = true;
             updateCreditsDisplay();
             updateMachineDisplay();
-            saveGameData();
+            checkAchievements(); // Check achievements after unlocking a machine
+            debouncedSaveGameData(); // Use debounced save
             showMessageBox("Unlocked!", `${currentMachine.name} has been unlocked!`);
         }
 
@@ -2082,7 +2503,8 @@
             updateCreditsDisplay();
             updateUpgradesDisplay();
             updateIdleIncomeDisplay();
-            saveGameData();
+            checkAchievements(); // Check achievements after buying upgrade (e.g., if it ties to lifetime credits)
+            debouncedSaveGameData(); // Use debounced save
             showMessageBox("Upgrade Purchased!", `You bought "${upgradeToPurchase.name}"!`);
         }
 
@@ -2119,7 +2541,8 @@
             updatePrestigeUI();
             updateIdleIncomeDisplay(); // Might affect idle income
             updateInventoryDisplay(); // Might affect item values in inventory display
-            saveGameData();
+            checkAchievements(); // Check achievements after buying prestige upgrade
+            debouncedSaveGameData(); // Use debounced save
 
             // If an automation upgrade was just purchased, try to start its interval
             if (upgradeToPurchase.type === 'automation') {
@@ -2144,7 +2567,7 @@
             automationSettings[type] = !automationSettings[type];
             startAutomationIntervals(); // Restart all intervals to reflect changes
             updatePrestigeUI(); // Update the toggle button's display
-            saveGameData();
+            debouncedSaveGameData(); // Use debounced save
             showMessageBox("Automation Toggled", `${type === 'autoPull' ? 'Auto-Pull' : 'Auto-Sell'} is now ${automationSettings[type] ? 'ON' : 'OFF'}.`);
         }
 
@@ -2205,7 +2628,7 @@
                 currentMachineIndex = 0;
             }
             updateMachineDisplay();
-            saveGameData();
+            debouncedSaveGameData(); // Use debounced save
         }
 
         /**
@@ -2228,11 +2651,69 @@
             credits += earned;
             lifetimeCreditsEarned += earned;
             inventory.splice(index, 1);
+            totalItemsSold++; // Increment total items sold for achievement
+            console.log("Selling item:", itemToSell, "New inventory after manual sell:", inventory); // ADDED LOG
 
             updateCreditsDisplay();
             updateInventoryDisplay();
-            saveGameData();
+            checkAchievements(); // Check achievements after selling
+            debouncedSaveGameData(); // Use debounced save
         }
+
+        /**
+         * Checks for completed achievements and grants rewards.
+         */
+        function checkAchievements() {
+            let totalUniqueGameItems = 0;
+            gachaMachines.forEach(machine => {
+                totalUniqueGameItems += gachaItems[machine.id].length;
+            });
+
+            achievementsListDefinition.forEach(achievementDef => {
+                if (achievements[achievementDef.id]?.completed) {
+                    return; // Skip if already completed
+                }
+
+                let isCompleted = false;
+                let currentProgress = getCurrentAchievementProgress(achievementDef);
+
+                if (achievementDef.type === 'collectionCompletion') {
+                    const collectedUniqueCount = Object.values(collectionLog).filter(item => item.collected).length;
+                    if (collectedUniqueCount === totalUniqueGameItems && totalUniqueGameItems > 0) {
+                        isCompleted = true;
+                    }
+                } else if (currentProgress >= achievementDef.target) {
+                    isCompleted = true;
+                }
+
+                if (isCompleted) {
+                    achievements[achievementDef.id] = {
+                        completed: true,
+                        timestamp: Date.now()
+                    };
+
+                    let rewardMessage = '';
+                    if (achievementDef.reward) {
+                        if (achievementDef.reward.type === 'credits') {
+                            credits += achievementDef.reward.amount;
+                            lifetimeCreditsEarned += achievementDef.reward.amount;
+                            updateCreditsDisplay();
+                            rewardMessage = ` (+${achievementDef.reward.amount} Credits)`;
+                        } else if (achievementDef.reward.type === 'stardust') {
+                            stardust += achievementDef.reward.amount;
+                            updatePrestigeUI();
+                            rewardMessage = ` (+${achievementDef.reward.amount} Stardust)`;
+                        }
+                    }
+                    showMessageBox("Achievement Unlocked!", `${achievementDef.name}: ${achievementDef.description}${rewardMessage}`);
+                    console.log(`Achievement unlocked: ${achievementDef.name}`);
+                    // Trigger a debounced save when an achievement is unlocked
+                    debouncedSaveGameData();
+                }
+            });
+            updateAchievementsDisplay(); // Update display to show new completion status
+        }
+
 
         // Event Listeners
         prevMachineButton.addEventListener('click', () => cycleMachine(-1));
@@ -2276,6 +2757,15 @@
             updatePrestigeUI(); // Ensure prestige UI is updated when opening
             showPage(prestigeUpgradesPage);
         });
+        menuCollectionLogButton.addEventListener('click', () => { // New: Collection Log button
+            updateCollectionLogDisplay();
+            showPage(collectionLogPage);
+        });
+        menuAchievementsButton.addEventListener('click', () => { // New: Achievements button
+            updateAchievementsDisplay();
+            showPage(achievementsPage);
+        });
+
 
         function openSideMenu() {
             sideMenuOverlay.classList.add('open');
@@ -2292,3 +2782,4 @@
     </script>
 </body>
 </html>
+�
